@@ -5,6 +5,7 @@ import '../../models/product.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
 import '../../utils/auth_guard.dart';
+import 'store_page_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -88,7 +89,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Text(product.nameLao, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           if (product.storeName != null) ...[
             const SizedBox(height: 4),
-            Text('ຮ້ານ: ${product.storeName}', style: TextStyle(color: Colors.grey.shade600)),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => StorePageScreen(storeId: product.storeId)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.storefront, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  Text('ຮ້ານ: ${product.storeName}',
+                      style: TextStyle(color: const Color(AppColors.primaryValue), decoration: TextDecoration.underline)),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 8),
           Text('${priceFormat.format(price)} ກີບ',

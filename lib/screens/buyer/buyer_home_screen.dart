@@ -4,10 +4,13 @@ import '../../config/constants.dart';
 import '../../models/category.dart';
 import '../../models/product.dart';
 import '../../models/banner_item.dart';
+import '../../models/store.dart';
 import '../../services/catalog_service.dart';
 import '../../services/product_service.dart';
 import '../../services/banner_service.dart';
+import '../../services/store_service.dart';
 import '../../widgets/product_card.dart';
+import '../../widgets/store_card.dart';
 import '../../state/app_state.dart';
 import '../../utils/auth_guard.dart';
 import '../../utils/category_style.dart';
@@ -15,6 +18,7 @@ import '../auth/login_screen.dart';
 import '../admin/admin_shell_screen.dart';
 import '../seller/seller_shell_screen.dart';
 import 'product_detail_screen.dart';
+import 'store_page_screen.dart';
 import 'cart_screen.dart';
 import 'my_orders_screen.dart';
 
@@ -33,12 +37,14 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   final _catalogService = CatalogService();
   final _productService = ProductService();
   final _bannerService = BannerService();
+  final _storeService = StoreService();
   final _searchCtrl = TextEditingController();
   final _bannerController = PageController();
 
   List<ProductCategory> _categories = [];
   List<Product> _products = [];
   List<BannerItem> _banners = [];
+  List<Store> _featuredStores = [];
   int _bannerIndex = 0;
   int? _selectedCategoryId;
   bool _loading = true;
@@ -62,10 +68,12 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
       );
       final banners = await _bannerService.getActiveBanners();
+      final featuredStores = await _storeService.getStores(featuredOnly: true);
       setState(() {
         _categories = categories;
         _products = products;
         _banners = banners;
+        _featuredStores = featuredStores;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -151,6 +159,8 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             SliverToBoxAdapter(child: _buildHeader(appState)),
             SliverToBoxAdapter(child: _buildBanner()),
             SliverToBoxAdapter(child: _buildCategoryRow()),
+            SliverToBoxAdapter(child: _buildRecommendedStores()),
+            SliverToBoxAdapter(child: _buildBestSellers()),
             SliverToBoxAdapter(child: _buildSectionTitle()),
             if (_loading)
               const SliverToBoxAdapter(
@@ -422,6 +432,96 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               },
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedStores() {
+    if (_featuredStores.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.recommend, size: 18, color: Color(AppColors.primaryValue)),
+                SizedBox(width: 6),
+                Text('ຮ້ານຄ້າແນະນຳ',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(AppColors.textDarkValue))),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 128,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _featuredStores.length,
+              itemBuilder: (context, index) {
+                final store = _featuredStores[index];
+                return StoreCard(
+                  store: store,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => StorePageScreen(storeId: store.id)),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBestSellers() {
+    if (_products.isEmpty) return const SizedBox.shrink();
+    final bestSellers = [..._products]..sort((a, b) => b.soldCount.compareTo(a.soldCount));
+    final topSellers = bestSellers.take(8).toList();
+    if (topSellers.isEmpty || topSellers.first.soldCount == 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.local_fire_department, size: 18, color: Color(AppColors.errorValue)),
+                SizedBox(width: 6),
+                Text('ສິນຄ້າຂາຍດີ',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(AppColors.textDarkValue))),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 220,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: topSellers.length,
+              itemBuilder: (context, index) {
+                final product = topSellers[index];
+                return SizedBox(
+                  width: 150,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: ProductCard(
+                      product: product,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => ProductDetailScreen(productId: product.id)),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
