@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/constants.dart';
@@ -49,11 +50,36 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   int? _selectedCategoryId;
   bool _loading = true;
   String? _error;
+  Timer? _bannerAutoPlayTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _startBannerAutoPlay();
+  }
+
+  @override
+  void dispose() {
+    _bannerAutoPlayTimer?.cancel();
+    _bannerController.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Auto-advances the banner carousel every 4 seconds, the way a
+  /// normal marketplace promo banner behaves — manual swipe still
+  /// works too, since PageView supports both at once.
+  void _startBannerAutoPlay() {
+    _bannerAutoPlayTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || _banners.length <= 1 || !_bannerController.hasClients) return;
+      final nextIndex = (_bannerIndex + 1) % _banners.length;
+      _bannerController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   Future<void> _load() async {
@@ -62,18 +88,23 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       _error = null;
     });
     try {
-      final categories = await _catalogService.getCategories();
-      final products = await _productService.getProducts(
-        categoryId: _selectedCategoryId,
-        search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
-      );
-      final banners = await _bannerService.getActiveBanners();
-      final featuredStores = await _storeService.getStores(featuredOnly: true);
+      // Fire all 4 independent requests at once instead of waiting for
+      // each one before starting the next — cuts load time roughly
+      // 4x since none of these actually depend on each other.
+      final results = await Future.wait([
+        _catalogService.getCategories(),
+        _productService.getProducts(
+          categoryId: _selectedCategoryId,
+          search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        ),
+        _bannerService.getActiveBanners(),
+        _storeService.getStores(featuredOnly: true),
+      ]);
       setState(() {
-        _categories = categories;
-        _products = products;
-        _banners = banners;
-        _featuredStores = featuredStores;
+        _categories = results[0] as List<ProductCategory>;
+        _products = results[1] as List<Product>;
+        _banners = results[2] as List<BannerItem>;
+        _featuredStores = results[3] as List<Store>;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -191,7 +222,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
                     maxCrossAxisExtent: 190,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 0.68,
+                    childAspectRatio: 0.58,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -228,7 +259,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               children: [
                 const Expanded(
                   child: Text(
-                    'ສວນມັວກອມ Market',
+                    'ສວນມັງກອມ Market',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -297,16 +328,18 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             onPageChanged: (i) => setState(() => _bannerIndex = i),
             itemBuilder: (context, index) {
               final banner = _banners[index];
-              return Container(
-                margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      '${ApiConfig.mediaBaseUrl}${banner.imageUrl}',
-                      fit: BoxFit.cover,
+              return GestureDetector(
+                onTap: () => _handleBannerTap(banner),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        '${ApiConfig.mediaBaseUrl}${banner.imageUrl}',
+                        fit: BoxFit.cover,
                     ),
                     if (banner.title != null || banner.subtitle != null)
                       Container(
@@ -341,6 +374,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
                       ),
                   ],
                 ),
+                ),
               );
             },
           ),
@@ -365,6 +399,37 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         ],
       ],
     );
+  }
+
+  /// Interprets a banner's linkUrl (set by admin) and navigates
+  /// accordingly. Supported formats: "store:<id>", "category:<id>",
+  /// "product:<id>". Anything else, or an empty linkUrl, does nothing.
+  void _handleBannerTap(BannerItem banner) {
+    final link = banner.linkUrl;
+    if (link == null || link.trim().isEmpty) return;
+
+    final parts = link.split(':');
+    if (parts.length != 2) return;
+    final type = parts[0].trim().toLowerCase();
+    final id = int.tryParse(parts[1].trim());
+    if (id == null) return;
+
+    switch (type) {
+      case 'store':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => StorePageScreen(storeId: id)),
+        );
+        break;
+      case 'product':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ProductDetailScreen(productId: id)),
+        );
+        break;
+      case 'category':
+        setState(() => _selectedCategoryId = id);
+        _load();
+        break;
+    }
   }
 
   Widget _buildFallbackBanner() {
@@ -500,7 +565,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             ),
           ),
           SizedBox(
-            height: 220,
+            height: 250,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),

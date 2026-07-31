@@ -11,6 +11,6 @@ void main() {
     await tester.pumpWidget(const SuanMarketApp());
 
     // The storefront title should appear in the AppBar on launch.
-    expect(find.text('ສວນມັວກອມ Market'), findsOneWidget);
+    expect(find.text('ສວນມັງກອມ Market'), findsOneWidget);
   });
 }

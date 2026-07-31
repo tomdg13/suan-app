@@ -47,13 +47,15 @@ class _StorePageScreenState extends State<StorePageScreen> with SingleTickerProv
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final store = await _storeService.getStore(widget.storeId);
-    final products = await _productService.getProducts(storeId: widget.storeId);
-    final reviews = await _reviewService.getStoreReviews(widget.storeId);
+    final results = await Future.wait([
+      _storeService.getStore(widget.storeId),
+      _productService.getProducts(storeId: widget.storeId),
+      _reviewService.getStoreReviews(widget.storeId),
+    ]);
     setState(() {
-      _store = store;
-      _products = products;
-      _reviews = reviews;
+      _store = results[0] as Store;
+      _products = results[1] as List<Product>;
+      _reviews = results[2] as List<Review>;
       _loading = false;
     });
   }
@@ -178,7 +180,7 @@ class _StorePageScreenState extends State<StorePageScreen> with SingleTickerProv
         maxCrossAxisExtent: 190,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 0.68,
+        childAspectRatio: 0.58,
       ),
       itemBuilder: (context, index) {
         final product = _products[index];

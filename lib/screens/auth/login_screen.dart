@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.storefront, size: 64, color: Colors.green),
                 const SizedBox(height: 8),
-                const Text('ສວນມັວກອມ Market',
+                const Text('ສວນມັງກອມ Market',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
                 TextField(

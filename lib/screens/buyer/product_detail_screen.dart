@@ -6,6 +6,7 @@ import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
 import '../../utils/auth_guard.dart';
 import 'store_page_screen.dart';
+import 'fullscreen_gallery_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -193,30 +194,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               itemCount: images.length,
               onPageChanged: (i) => setState(() => _galleryIndex = i),
               itemBuilder: (context, index) {
-                return Image.network(
-                  '${ApiConfig.mediaBaseUrl}${images[index]}',
-                  fit: BoxFit.cover,
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FullscreenGalleryScreen(images: images, initialIndex: index),
+                    ),
+                  ),
+                  child: Image.network(
+                    '${ApiConfig.mediaBaseUrl}${images[index]}',
+                    fit: BoxFit.cover,
+                  ),
                 );
               },
             ),
           ),
         ),
         if (images.length > 1) ...[
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(images.length, (i) {
-              final active = i == _galleryIndex;
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: active ? 10 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: active ? Colors.green : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              );
-            }),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 60,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: images.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final active = index == _galleryIndex;
+                return GestureDetector(
+                  onTap: () {
+                    _galleryController.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: active ? Colors.green : Colors.grey.shade300,
+                        width: active ? 2 : 1,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      '${ApiConfig.mediaBaseUrl}${images[index]}',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ],

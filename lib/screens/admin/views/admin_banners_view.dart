@@ -162,6 +162,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
 
   late final _titleCtrl = TextEditingController(text: widget.existing?.title ?? '');
   late final _subtitleCtrl = TextEditingController(text: widget.existing?.subtitle ?? '');
+  late final _linkCtrl = TextEditingController(text: widget.existing?.linkUrl ?? '');
 
   Uint8List? _pickedImage;
   bool _submitting = false;
@@ -208,6 +209,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
           widget.existing!.id,
           title: _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
           subtitle: _subtitleCtrl.text.trim().isEmpty ? null : _subtitleCtrl.text.trim(),
+          linkUrl: _linkCtrl.text.trim().isEmpty ? null : _linkCtrl.text.trim(),
           imageBytes: _pickedImage,
         );
       } else {
@@ -215,6 +217,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
           imageBytes: _pickedImage!,
           title: _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
           subtitle: _subtitleCtrl.text.trim().isEmpty ? null : _subtitleCtrl.text.trim(),
+          linkUrl: _linkCtrl.text.trim().isEmpty ? null : _linkCtrl.text.trim(),
         );
       }
       widget.onSaved();
@@ -271,6 +274,25 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
             TextField(
               controller: _subtitleCtrl,
               decoration: const InputDecoration(labelText: 'Subtitle (optional)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _linkCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Tap action (optional)',
+                hintText: 'e.g. store:5, category:2, or product:10',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Tapping the banner opens that store/category/product. Leave blank for no action.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),

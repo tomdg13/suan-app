@@ -24,6 +24,7 @@ class BannerService {
     required Uint8List imageBytes,
     String? title,
     String? subtitle,
+    String? linkUrl,
   }) async {
     final response = await _multipartRequest(
       method: 'POST',
@@ -32,6 +33,7 @@ class BannerService {
       fields: {
         if (title != null) 'title': title,
         if (subtitle != null) 'subtitle': subtitle,
+        if (linkUrl != null) 'linkUrl': linkUrl,
       },
     );
     return BannerItem.fromJson(response);
@@ -42,6 +44,7 @@ class BannerService {
     Uint8List? imageBytes,
     String? title,
     String? subtitle,
+    String? linkUrl,
     bool? isActive,
   }) async {
     final response = await _multipartRequest(
@@ -51,6 +54,7 @@ class BannerService {
       fields: {
         if (title != null) 'title': title,
         if (subtitle != null) 'subtitle': subtitle,
+        if (linkUrl != null) 'linkUrl': linkUrl,
         if (isActive != null) 'isActive': isActive ? '1' : '0',
       },
     );
