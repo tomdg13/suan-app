@@ -85,19 +85,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildGallery(images),
-          const SizedBox(height: 16),
-          Text(product.nameLao, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          if (product.storeName != null) ...[
-            const SizedBox(height: 4),
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => StorePageScreen(storeId: product.storeId)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.storefront, size: 14, color: Colors.grey.shade600),
+              _buildGallery(images),
+              const SizedBox(height: 16),
+              Text(product.nameLao, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              if (product.storeName != null) ...[
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => StorePageScreen(storeId: product.storeId)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.storefront, size: 14, color: Colors.grey.shade600),
                   const SizedBox(width: 4),
                   Text('ຮ້ານ: ${product.storeName}',
                       style: TextStyle(color: const Color(AppColors.primaryValue), decoration: TextDecoration.underline)),

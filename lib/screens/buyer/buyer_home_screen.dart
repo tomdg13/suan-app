@@ -259,7 +259,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               children: [
                 const Expanded(
                   child: Text(
-                    'ສວນມັງກອມ Market',
+                    'ສວນມັວກອມ Market',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
