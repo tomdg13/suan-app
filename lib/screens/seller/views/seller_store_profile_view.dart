@@ -162,6 +162,13 @@ class _SellerStoreProfileViewState extends State<SellerStoreProfileView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Stack(
+                // Clip.none: the logo is deliberately positioned to overflow
+                // below the cover photo (bottom: -32) so it straddles both
+                // sections. Stack's default clip behavior was cutting off
+                // that overflowing part — Clip.none lets it render in full,
+                // and since it's the last Stack child it always paints on
+                // top of the cover photo and edit button.
+                clipBehavior: Clip.none,
                 children: [
                   GestureDetector(
                     onTap: _uploadingType != null ? null : () => _pickAndUpload('cover'),
@@ -191,12 +198,15 @@ class _SellerStoreProfileViewState extends State<SellerStoreProfileView> {
                       label: const Text('Cover'),
                     ),
                   ),
+                  // Logo: last child in the Stack, so it always paints on
+                  // top of the cover photo and the "Cover" button above.
                   Positioned(
                     left: 16,
                     bottom: -32,
                     child: GestureDetector(
                       onTap: _uploadingType != null ? null : () => _pickAndUpload('logo'),
                       child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           Container(
                             width: 72,
@@ -208,6 +218,9 @@ class _SellerStoreProfileViewState extends State<SellerStoreProfileView> {
                               image: logoUrl != null
                                   ? DecorationImage(image: NetworkImage(logoUrl), fit: BoxFit.cover)
                                   : null,
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                              ],
                             ),
                             child: logoUrl == null
                                 ? const Icon(Icons.storefront, color: Colors.green)

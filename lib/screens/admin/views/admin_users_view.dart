@@ -3,6 +3,9 @@ import '../../../models/admin_user.dart';
 import '../../../services/user_service.dart';
 import '../../../services/api_client.dart';
 
+// Same breakpoint used across the other admin/seller screens.
+const double _kMobileBreakpoint = 700;
+
 class AdminUsersView extends StatefulWidget {
   const AdminUsersView({super.key});
 
@@ -165,53 +168,124 @@ class _AdminUsersViewState extends State<AdminUsersView> {
       return Center(child: Text('Error: $_error'));
     }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('Users', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          ..._users.map((user) {
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: _roleColor(user.role),
-                  child: Text(
-                    user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                    style: const TextStyle(color: Colors.white),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < _kMobileBreakpoint;
+
+        return RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const Text('Users', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ..._users.map((user) => _buildUserCard(user, isMobile)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCard(AdminUser user, bool isMobile) {
+    final avatar = CircleAvatar(
+      backgroundColor: _roleColor(user.role),
+      child: Text(
+        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+        style: const TextStyle(color: Colors.white),
+      ),
+    );
+
+    final roleDropdown = DropdownButton<String>(
+      value: user.role,
+      isDense: true,
+      items: _roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+      onChanged: (v) {
+        if (v != null) _changeRole(user, v);
+      },
+    );
+
+    if (!isMobile) {
+      // Unchanged desktop/web layout.
+      return Card(
+        child: ListTile(
+          leading: avatar,
+          title: Text(user.fullName),
+          subtitle: Text(user.phone),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, size: 20),
+                tooltip: 'Edit user',
+                onPressed: () => _openEditDialog(user),
+              ),
+              roleDropdown,
+              const SizedBox(width: 8),
+              Switch(
+                value: user.isActive == 1,
+                onChanged: (_) => _toggleActive(user),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ---- Mobile: avatar + name/phone on one row (full width to breathe),
+    // edit/role/switch actions on a second row below instead of being
+    // squeezed into a narrow trailing column. ----
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                avatar,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.fullName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user.phone,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                    ],
                   ),
                 ),
-                title: Text(user.fullName),
-                subtitle: Text(user.phone),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      tooltip: 'Edit user',
-                      onPressed: () => _openEditDialog(user),
-                    ),
-                    DropdownButton<String>(
-                      value: user.role,
-                      items: _roles
-                          .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) _changeRole(user, v);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Switch(
-                      value: user.isActive == 1,
-                      onChanged: (_) => _toggleActive(user),
-                    ),
-                  ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  tooltip: 'Edit user',
+                  onPressed: () => _openEditDialog(user),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 ),
-              ),
-            );
-          }),
-        ],
+                const SizedBox(width: 4),
+                roleDropdown,
+                const Spacer(),
+                Switch(
+                  value: user.isActive == 1,
+                  onChanged: (_) => _toggleActive(user),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

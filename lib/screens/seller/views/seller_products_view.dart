@@ -13,6 +13,11 @@ import '../../../services/upload_service.dart';
 import '../../../services/api_client.dart';
 import '../../../utils/image_compress.dart';
 
+// Below this width the header stacks (title above the button instead of
+// side-by-side) and product cards switch to a compact layout that doesn't
+// squeeze the "Stock: N · N photo(s)" line into a single narrow column.
+const double _kMobileBreakpoint = 700;
+
 class SellerProductsView extends StatefulWidget {
   final Store? store;
   const SellerProductsView({super.key, required this.store});
@@ -113,85 +118,193 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     }
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < _kMobileBreakpoint;
+
+        return RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
             children: [
-              Text('${widget.store!.storeName} — Products',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: _openAddProductSheet,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Product'),
+              _buildHeader(isMobile),
+              const SizedBox(height: 16),
+              if (_products.isEmpty) const Text('No products yet.'),
+              ..._products.map((p) => _buildProductCard(p, priceFormat, isMobile)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ---- Header: title + Add Product button. Stacks on mobile instead of
+  // overflowing off the right edge. ----
+  Widget _buildHeader(bool isMobile) {
+    final title = Text(
+      '${widget.store!.storeName} — Products',
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      overflow: TextOverflow.ellipsis,
+      maxLines: isMobile ? 2 : 1,
+    );
+    final addButton = FilledButton.icon(
+      onPressed: _openAddProductSheet,
+      icon: const Icon(Icons.add),
+      label: const Text('Add Product'),
+    );
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          title,
+          const SizedBox(height: 12),
+          addButton,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: title),
+        const SizedBox(width: 12),
+        addButton,
+      ],
+    );
+  }
+
+  // ---- Product card: ListTile layout on wide screens (unchanged),
+  // custom stacked layout on mobile so the subtitle line and action
+  // icons both get enough room instead of being squeezed into one
+  // vertical sliver. ----
+  Widget _buildProductCard(Product p, NumberFormat priceFormat, bool isMobile) {
+    final thumbUrl = p.imageUrls.isNotEmpty ? _fullImageUrl(p.imageUrls.first) : null;
+
+    final thumb = SizedBox(
+      width: 48,
+      height: 48,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: thumbUrl != null
+            ? Image.network(thumbUrl, fit: BoxFit.cover)
+            : Container(
+                color: Colors.green.shade50,
+                child: const Icon(Icons.image, color: Colors.green, size: 20),
+              ),
+      ),
+    );
+
+    final nameRow = Row(
+      children: [
+        Flexible(child: Text(p.nameLao, overflow: TextOverflow.ellipsis)),
+        if (!p.isActive) ...[
+          const SizedBox(width: 6),
+          const Chip(
+            label: Text('Hidden', style: TextStyle(fontSize: 11)),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ],
+    );
+
+    final stockLine = Text(
+      'Stock: ${p.stockQty.toStringAsFixed(0)} · ${p.imageUrls.length} photo(s)',
+      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+    );
+
+    if (!isMobile) {
+      // Unchanged desktop/web layout.
+      return Opacity(
+        opacity: p.isActive ? 1.0 : 0.55,
+        child: Card(
+          child: ListTile(
+            leading: thumb,
+            title: nameRow,
+            subtitle: stockLine,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('${priceFormat.format(p.basePrice)} ກີບ'),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  tooltip: 'Edit product',
+                  onPressed: () => _openEditProductSheet(p),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.photo_library_outlined, size: 20),
+                  tooltip: 'Manage photos',
+                  onPressed: () => _openManageImages(p),
+                ),
+                Switch(
+                  value: p.isActive,
+                  onChanged: (_) => _toggleVisibility(p),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ---- Mobile layout: image + name/stock on one row (full width to
+    // breathe), price + action icons on a second row below. ----
+    return Opacity(
+      opacity: p.isActive ? 1.0 : 0.55,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  thumb,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        nameRow,
+                        const SizedBox(height: 4),
+                        stockLine,
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Text(
+                    '${priceFormat.format(p.basePrice)} ກີບ',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: 'Edit product',
+                    onPressed: () => _openEditProductSheet(p),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.photo_library_outlined, size: 20),
+                    tooltip: 'Manage photos',
+                    onPressed: () => _openManageImages(p),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
+                  Switch(
+                    value: p.isActive,
+                    onChanged: (_) => _toggleVisibility(p),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (_products.isEmpty) const Text('No products yet.'),
-          ..._products.map((p) {
-            final thumbUrl = p.imageUrls.isNotEmpty ? _fullImageUrl(p.imageUrls.first) : null;
-            return Opacity(
-              opacity: p.isActive ? 1.0 : 0.55,
-              child: Card(
-                child: ListTile(
-                  leading: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: thumbUrl != null
-                          ? Image.network(thumbUrl, fit: BoxFit.cover)
-                          : Container(
-                              color: Colors.green.shade50,
-                              child: const Icon(Icons.image, color: Colors.green, size: 20),
-                            ),
-                    ),
-                  ),
-                  title: Row(
-                    children: [
-                      Flexible(child: Text(p.nameLao, overflow: TextOverflow.ellipsis)),
-                      if (!p.isActive) ...[
-                        const SizedBox(width: 6),
-                        const Chip(
-                          label: Text('Hidden', style: TextStyle(fontSize: 11)),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ],
-                    ],
-                  ),
-                  subtitle: Text(
-                    'Stock: ${p.stockQty.toStringAsFixed(0)} · ${p.imageUrls.length} photo(s)',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${priceFormat.format(p.basePrice)} ກີບ'),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        tooltip: 'Edit product',
-                        onPressed: () => _openEditProductSheet(p),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.photo_library_outlined, size: 20),
-                        tooltip: 'Manage photos',
-                        onPressed: () => _openManageImages(p),
-                      ),
-                      Switch(
-                        value: p.isActive,
-                        onChanged: (_) => _toggleVisibility(p),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
+        ),
       ),
     );
   }

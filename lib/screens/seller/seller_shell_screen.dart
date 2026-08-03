@@ -9,16 +9,19 @@ import 'views/seller_store_profile_view.dart';
 import 'views/seller_products_view.dart';
 import 'views/seller_orders_view.dart';
 
+// Below this width, the permanent sidebar becomes a Drawer (hamburger menu)
+// instead of squeezing the content panel. Matches the breakpoint used on
+// the product detail screen for consistency.
+const double _kMobileBreakpoint = 700;
+
 class SellerShellScreen extends StatefulWidget {
   const SellerShellScreen({super.key});
-
   @override
   State<SellerShellScreen> createState() => _SellerShellScreenState();
 }
 
 class _SellerShellScreenState extends State<SellerShellScreen> {
   final _storeService = StoreService();
-
   int _selected = 0;
   Store? _selectedStore;
   bool _loadingStore = true;
@@ -31,6 +34,14 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       NavItem(label: 'Products', icon: Icons.inventory_2, index: 1),
       NavItem(label: 'Orders', icon: Icons.receipt_long, index: 2),
     ]),
+  ];
+
+  // Labels for the bottom nav bar (mobile only) — mirrors the flat index
+  // order used by `views` below (0 = Store Profile, 1 = Products, 2 = Orders).
+  static const _bottomNavItems = [
+    BottomNavigationBarItem(icon: Icon(Icons.badge), label: 'Store'),
+    BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Products'),
+    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
   ];
 
   @override
@@ -71,28 +82,67 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       SellerOrdersView(store: _selectedStore),
     ];
 
-    return Scaffold(
-      body: Row(
-        children: [
-          SideNav(
-            groups: _groups,
-            selectedIndex: _selected,
-            onSelect: (i) => setState(() => _selected = i),
-            headerTitle: _selectedStore?.storeName ?? 'Seller Panel',
-            headerIcon: Icons.storefront,
-            onLogout: _logout,
+    final content = _loadingStore
+        ? const Center(child: CircularProgressIndicator())
+        : IndexedStack(
+            index: _selected,
+            children: views,
+          );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < _kMobileBreakpoint;
+
+        if (isMobile) {
+          // ---- MOBILE: sidebar moves into a Drawer, content gets full width,
+          // and a bottom nav bar gives quick access without opening the drawer.
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(_selectedStore?.storeName ?? 'Seller Panel'),
+            ),
+            drawer: Drawer(
+              child: SafeArea(
+                child: SideNav(
+                  groups: _groups,
+                  selectedIndex: _selected,
+                  onSelect: (i) {
+                    setState(() => _selected = i);
+                    Navigator.of(context).pop(); // close drawer after picking
+                  },
+                  headerTitle: _selectedStore?.storeName ?? 'Seller Panel',
+                  headerIcon: Icons.storefront,
+                  onLogout: _logout,
+                ),
+              ),
+            ),
+            body: content,
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _selected,
+              onTap: (i) => setState(() => _selected = i),
+              items: _bottomNavItems,
+              type: BottomNavigationBarType.fixed,
+            ),
+          );
+        }
+
+        // ---- WEB / WIDE: original permanent sidebar layout ----
+        return Scaffold(
+          body: Row(
+            children: [
+              SideNav(
+                groups: _groups,
+                selectedIndex: _selected,
+                onSelect: (i) => setState(() => _selected = i),
+                headerTitle: _selectedStore?.storeName ?? 'Seller Panel',
+                headerIcon: Icons.storefront,
+                onLogout: _logout,
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: content),
+            ],
           ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: _loadingStore
-                ? const Center(child: CircularProgressIndicator())
-                : IndexedStack(
-                    index: _selected,
-                    children: views,
-                  ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
