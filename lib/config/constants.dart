@@ -4,7 +4,9 @@ class ApiConfig {
   // - Android emulator talking to localhost backend: http://10.0.2.2:2332/api
   // - iOS simulator / Flutter Web (Chrome) on same machine: http://localhost:2332/api
   // - Real device: http://<your-computer-lan-ip>:2332/api
-  static const String baseUrl = 'http://localhost:2332/api';
+  //static const String baseUrl = 'http://localhost:2332/api';
+  //static const String baseUrl = 'http://209.97.172.105:2332/api';
+static const String baseUrl = 'https://api.mungkonefarm.com/api';
 
   // Uploaded images (store logos/covers, product photos) are served at
   // the ROOT of the backend, not under /api — this strips the /api

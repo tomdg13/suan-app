@@ -67,9 +67,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     super.dispose();
   }
 
-  /// Auto-advances the banner carousel every 4 seconds, the way a
-  /// normal marketplace promo banner behaves — manual swipe still
-  /// works too, since PageView supports both at once.
   void _startBannerAutoPlay() {
     _bannerAutoPlayTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted || _banners.length <= 1 || !_bannerController.hasClients) return;
@@ -88,9 +85,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       _error = null;
     });
     try {
-      // Fire all 4 independent requests at once instead of waiting for
-      // each one before starting the next — cuts load time roughly
-      // 4x since none of these actually depend on each other.
       final results = await Future.wait([
         _catalogService.getCategories(),
         _productService.getProducts(
@@ -125,13 +119,11 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
   }
 
-  /// Account icon: if not logged in -> go to login. If logged in ->
-  /// route to whatever makes sense for that account's role.
   Future<void> _onAccountTap() async {
     final appState = context.read<AppState>();
     if (!appState.isLoggedIn) {
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      if (mounted) setState(() {}); // refresh app bar icon state
+      if (mounted) setState(() {});
       return;
     }
     final role = appState.currentUser?.role;
@@ -185,62 +177,71 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader(appState)),
-            SliverToBoxAdapter(child: _buildBanner()),
-            SliverToBoxAdapter(child: _buildCategoryRow()),
-            SliverToBoxAdapter(child: _buildRecommendedStores()),
-            SliverToBoxAdapter(child: _buildBestSellers()),
-            SliverToBoxAdapter(child: _buildSectionTitle()),
-            if (_loading)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              )
-            else if (_error != null)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(child: Text('Error: $_error')),
-                ),
-              )
-            else if (_products.isEmpty)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: Text('No products found')),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 190,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.58,
+        // On a wide desktop browser window, letting everything stretch
+        // full-bleed is what made the banner (and product grid) look
+        // oddly long/thin. Capping content to a max width and centering
+        // it keeps proportions sane the way marketplace sites do on web.
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader(appState)),
+                SliverToBoxAdapter(child: _buildBanner()),
+                SliverToBoxAdapter(child: _buildCategoryRow()),
+                SliverToBoxAdapter(child: _buildRecommendedStores()),
+                SliverToBoxAdapter(child: _buildBestSellers()),
+                SliverToBoxAdapter(child: _buildSectionTitle()),
+                if (_loading)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  )
+                else if (_error != null)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(child: Text('Error: $_error')),
+                    ),
+                  )
+                else if (_products.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: Text('No products found')),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 190,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.58,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final product = _products[index];
+                          return ProductCard(
+                            product: product,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(productId: product.id),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: _products.length,
+                      ),
+                    ),
                   ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = _products[index];
-                      return ProductCard(
-                        product: product,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ProductDetailScreen(productId: product.id),
-                          ),
-                        ),
-                      );
-                    },
-                    childCount: _products.length,
-                  ),
-                ),
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -284,8 +285,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
               ],
             ),
             const SizedBox(height: 4),
-            // Signature search pill — sits inside the brand-color header,
-            // the way the big regional marketplace apps anchor their home screen.
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -313,15 +312,17 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
 
   Widget _buildBanner() {
     if (_banners.isEmpty) {
-      // Fallback shown until an admin uploads a real banner —
-      // see Admin Dashboard > Banners.
       return _buildFallbackBanner();
     }
 
     return Column(
       children: [
-        SizedBox(
-          height: 140,
+        AspectRatio(
+          // Scales with width instead of staying a fixed 140px tall —
+          // on a wide desktop/Chrome window a fixed height made this
+          // look like a thin, stretched panoramic strip. 2.8:1 reads
+          // closer to a normal marketplace hero banner at any width.
+          aspectRatio: 2.8,
           child: PageView.builder(
             controller: _bannerController,
             itemCount: _banners.length,
@@ -401,9 +402,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     );
   }
 
-  /// Interprets a banner's linkUrl (set by admin) and navigates
-  /// accordingly. Supported formats: "store:<id>", "category:<id>",
-  /// "product:<id>". Anything else, or an empty linkUrl, does nothing.
   void _handleBannerTap(BannerItem banner) {
     final link = banner.linkUrl;
     if (link == null || link.trim().isEmpty) return;

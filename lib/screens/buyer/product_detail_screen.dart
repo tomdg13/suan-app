@@ -22,6 +22,11 @@ class _LazadaColors {
   static const discount = Color(AppColors.errorValue); // strikethrough %-off badge only
 }
 
+// Below this width we stack the layout (image on top, info below) instead
+// of side-by-side. Phones and narrow app windows fall under this; wide
+// web/tablet views stay on the original two-column layout.
+const double _kMobileBreakpoint = 700;
+
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
   const ProductDetailScreen({super.key, required this.productId});
@@ -84,8 +89,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final priceFormat = NumberFormat.decimalPattern('en_US');
-
     if (_loading || _product == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -94,16 +97,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     final product = _product!;
-    final price = _selectedVariant?.price ?? product.basePrice;
-    final images = product.imageUrls;
-
-    // If the selected variant's price differs from the base price, show the
-    // base price as a struck-through "original" price, Lazada-style. This
-    // uses only data already present on the model — no new fields added.
-    final hasDiscount = _selectedVariant != null && _selectedVariant!.price < product.basePrice;
-    final discountPct = hasDiscount
-        ? (((product.basePrice - _selectedVariant!.price) / product.basePrice) * 100).round()
-        : 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -120,259 +113,294 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-      // Two containers side by side: left = image gallery, right = all
-      // info + all buttons, scrolling independently of the image.
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ---- LEFT CONTAINER: image gallery ----
-            Expanded(
-              flex: 30,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _LazadaColors.divider),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: SingleChildScrollView(
-                  child: _buildGallery(images),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < _kMobileBreakpoint;
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: isMobile ? _buildMobileLayout(product) : _buildWebLayout(product),
+          );
+        },
+      ),
+    );
+  }
+
+  // ---- WEB / WIDE LAYOUT: gallery card on the left, info card on the right ----
+  Widget _buildWebLayout(Product product) {
+    final images = product.imageUrls;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 30,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _LazadaColors.divider),
+            ),
+            padding: const EdgeInsets.all(10),
+            child: SingleChildScrollView(
+              child: _buildGallery(images),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 70,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _LazadaColors.divider),
+            ),
+            padding: const EdgeInsets.all(14),
+            child: SingleChildScrollView(
+              child: _buildInfoColumn(product),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---- MOBILE / NARROW LAYOUT: full-width gallery on top, info stacked below ----
+  Widget _buildMobileLayout(Product product) {
+    final images = product.imageUrls;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Full-width gallery, no side squeeze.
+          _buildGallery(images),
+          const SizedBox(height: 16),
+          _buildInfoColumn(product),
+        ],
+      ),
+    );
+  }
+
+  // Shared info block (title, rating, price, store, options, qty, button,
+  // description) used by both layouts so behavior stays identical.
+  Widget _buildInfoColumn(Product product) {
+    final priceFormat = NumberFormat.decimalPattern('en_US');
+    final price = _selectedVariant?.price ?? product.basePrice;
+    final hasDiscount = _selectedVariant != null && _selectedVariant!.price < product.basePrice;
+    final discountPct = hasDiscount
+        ? (((product.basePrice - _selectedVariant!.price) / product.basePrice) * 100).round()
+        : 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        Text(
+          product.nameLao,
+          style: const TextStyle(
+            fontSize: 16,
+            height: 1.35,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Rating row
+        if (product.ratingCount > 0)
+          Row(
+            children: [
+              _buildStarRow(product.ratingAvg),
+              const SizedBox(width: 6),
+              Text('${product.ratingAvg}', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              const SizedBox(width: 8),
+              Container(width: 1, height: 12, color: _LazadaColors.divider),
+              const SizedBox(width: 8),
+              Text('${product.ratingCount} Reviews', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              const SizedBox(width: 8),
+              Container(width: 1, height: 12, color: _LazadaColors.divider),
+              const SizedBox(width: 8),
+              Text('${product.soldCount} Sold', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ],
+          ),
+        const SizedBox(height: 12),
+
+        // Price block
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _LazadaColors.surface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${priceFormat.format(price)} ກີບ',
+                style: const TextStyle(
+                  fontSize: 24,
+                  color: _LazadaColors.priceRed,
+                  fontWeight: FontWeight.bold,
+                  height: 1.0,
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-
-            // ---- RIGHT CONTAINER: info + buttons ----
-            Expanded(
-              flex: 70,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _LazadaColors.divider),
-                ),
-                padding: const EdgeInsets.all(14),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        product.nameLao,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Rating row
-                      if (product.ratingCount > 0)
-                        Row(
-                          children: [
-                            _buildStarRow(product.ratingAvg),
-                            const SizedBox(width: 6),
-                            Text('${product.ratingAvg}', style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                            const SizedBox(width: 8),
-                            Container(width: 1, height: 12, color: _LazadaColors.divider),
-                            const SizedBox(width: 8),
-                            Text('${product.ratingCount} Reviews', style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                            const SizedBox(width: 8),
-                            Container(width: 1, height: 12, color: _LazadaColors.divider),
-                            const SizedBox(width: 8),
-                            Text('${product.soldCount} Sold', style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                          ],
-                        ),
-                      const SizedBox(height: 12),
-
-                      // Price block
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: _LazadaColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${priceFormat.format(price)} ກີບ',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                color: _LazadaColors.priceRed,
-                                fontWeight: FontWeight.bold,
-                                height: 1.0,
-                              ),
-                            ),
-                            if (hasDiscount) ...[
-                              const SizedBox(width: 8),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: Text(
-                                  '${priceFormat.format(product.basePrice)} ກີບ',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade500,
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: _LazadaColors.discount.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '-$discountPct%',
-                                  style: const TextStyle(
-                                    color: _LazadaColors.discount,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Store row
-                      if (product.storeName != null) ...[
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => StorePageScreen(storeId: product.storeId)),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: _LazadaColors.surface,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.storefront, size: 16, color: _LazadaColors.primary),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    product.storeName!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13),
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right, size: 18, color: Colors.black45),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-
-                      // Options
-                      if (product.variants.isNotEmpty) ...[
-                        const Text('Options', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: product.variants.map((v) {
-                            final selected = v.id == _selectedVariant?.id;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedVariant = v),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 150),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                                decoration: BoxDecoration(
-                                  color: selected ? _LazadaColors.chipSelectedBg : Colors.white,
-                                  border: Border.all(
-                                    color: selected ? _LazadaColors.primary : _LazadaColors.chipBorder,
-                                    width: selected ? 1.5 : 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  v.variantLabel,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: selected ? _LazadaColors.primaryDark : Colors.black87,
-                                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Quantity
-                      Row(
-                        children: [
-                          const Text('Quantity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
-                          const Spacer(),
-                          _buildQtyButton(
-                            icon: Icons.remove,
-                            onTap: () => setState(() => _qty = (_qty - 1).clamp(1, 999)),
-                          ),
-                          Container(
-                            width: 44,
-                            alignment: Alignment.center,
-                            child: Text('$_qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                          ),
-                          _buildQtyButton(
-                            icon: Icons.add,
-                            onTap: () => setState(() => _qty += 1),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-
-                      // ---- All buttons live here, in the right container ----
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _LazadaColors.priceRed,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          ),
-                          onPressed: _adding ? null : _addToCart,
-                          icon: const Icon(Icons.shopping_cart_outlined),
-                          label: Text(
-                            _adding ? 'Adding...' : 'Add to Cart',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-
-                      if (product.description != null && product.description!.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        Container(height: 1, color: _LazadaColors.divider),
-                        const SizedBox(height: 16),
-                        const Text('Product Details', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
-                        const SizedBox(height: 8),
-                        Text(
-                          product.description!,
-                          style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
-                        ),
-                      ],
-                    ],
+              if (hasDiscount) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    '${priceFormat.format(product.basePrice)} ກີບ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                      decoration: TextDecoration.lineThrough,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _LazadaColors.discount.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '-$discountPct%',
+                    style: const TextStyle(
+                      color: _LazadaColors.discount,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Store row
+        if (product.storeName != null) ...[
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => StorePageScreen(storeId: product.storeId)),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: _LazadaColors.surface,
+                borderRadius: BorderRadius.circular(6),
               ),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront, size: 16, color: _LazadaColors.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      product.storeName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 18, color: Colors.black45),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // Options
+        if (product.variants.isNotEmpty) ...[
+          const Text('Options', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: product.variants.map((v) {
+              final selected = v.id == _selectedVariant?.id;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedVariant = v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: selected ? _LazadaColors.chipSelectedBg : Colors.white,
+                    border: Border.all(
+                      color: selected ? _LazadaColors.primary : _LazadaColors.chipBorder,
+                      width: selected ? 1.5 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    v.variantLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: selected ? _LazadaColors.primaryDark : Colors.black87,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Quantity
+        Row(
+          children: [
+            const Text('Quantity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const Spacer(),
+            _buildQtyButton(
+              icon: Icons.remove,
+              onTap: () => setState(() => _qty = (_qty - 1).clamp(1, 999)),
+            ),
+            Container(
+              width: 44,
+              alignment: Alignment.center,
+              child: Text('$_qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
+            _buildQtyButton(
+              icon: Icons.add,
+              onTap: () => setState(() => _qty += 1),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 18),
+
+        // Add to cart
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: _LazadaColors.priceRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            ),
+            onPressed: _adding ? null : _addToCart,
+            icon: const Icon(Icons.shopping_cart_outlined),
+            label: Text(
+              _adding ? 'Adding...' : 'Add to Cart',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+
+        if (product.description != null && product.description!.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Container(height: 1, color: _LazadaColors.divider),
+          const SizedBox(height: 16),
+          const Text('Product Details', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 8),
+          Text(
+            product.description!,
+            style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+          ),
+        ],
+      ],
     );
   }
 
@@ -408,8 +436,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // Gallery for the LEFT container: main image on top, thumbnail strip
-  // below it (scoped to the left column's width).
+  // Gallery: main image on top, thumbnail strip below. Now wrapped with a
+  // Container that has NO fixed width constraint of its own — it simply
+  // fills whatever parent gives it (full width on mobile, 30% flex on web),
+  // so the AspectRatio always keeps the image square instead of being
+  // squeezed into a sliver on narrow screens.
   Widget _buildGallery(List<String> images) {
     if (images.isEmpty) {
       return AspectRatio(
@@ -424,92 +455,108 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
     }
 
-    return Column(
-      children: [
-        Stack(
-          children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: PageView.builder(
-                  controller: _galleryController,
-                  itemCount: images.length,
-                  onPageChanged: (i) => setState(() => _galleryIndex = i),
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => FullscreenGalleryScreen(images: images, initialIndex: index),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _LazadaColors.divider),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: PageView.builder(
+                    controller: _galleryController,
+                    itemCount: images.length,
+                    onPageChanged: (i) => setState(() => _galleryIndex = i),
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => FullscreenGalleryScreen(images: images, initialIndex: index),
+                          ),
+                        ),
+                        child: Image.network(
+                          '${ApiConfig.mediaBaseUrl}${images[index]}',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: _LazadaColors.surface,
+                            child: const Icon(Icons.broken_image, size: 40, color: Colors.black26),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              if (images.length > 1)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_galleryIndex + 1}/${images.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (images.length > 1) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 56,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: images.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final active = index == _galleryIndex;
+                  return GestureDetector(
+                    onTap: () {
+                      _galleryController.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: active ? _LazadaColors.primary : _LazadaColors.chipBorder,
+                          width: active ? 1.5 : 1,
                         ),
                       ),
+                      clipBehavior: Clip.antiAlias,
                       child: Image.network(
                         '${ApiConfig.mediaBaseUrl}${images[index]}',
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: _LazadaColors.surface,
+                          child: const Icon(Icons.broken_image, size: 20, color: Colors.black26),
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ),
-            if (images.length > 1)
-              Positioned(
-                right: 10,
-                bottom: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${_galleryIndex + 1}/${images.length}',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ),
-              ),
           ],
-        ),
-        if (images.length > 1) ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 56,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: images.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final active = index == _galleryIndex;
-                return GestureDetector(
-                  onTap: () {
-                    _galleryController.animateToPage(
-                      index,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: active ? _LazadaColors.primary : _LazadaColors.chipBorder,
-                        width: active ? 1.5 : 1,
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.network(
-                      '${ApiConfig.mediaBaseUrl}${images[index]}',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
         ],
-      ],
+      ),
     );
   }
 }
