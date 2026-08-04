@@ -170,6 +170,26 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     );
   }
 
+  // Bottom nav is presentational only here — Home is always the "active"
+  // page (index 0) since Orders/Cart/Account push a new screen on top
+  // rather than replacing this one. Tapping them re-runs the same auth
+  // + navigation logic the old header icons used, just from the bottom bar.
+  void _onBottomNavTap(int index) {
+    switch (index) {
+      case 0:
+        break; // already home
+      case 1:
+        _openOrders();
+        break;
+      case 2:
+        _openCart();
+        break;
+      case 3:
+        _onAccountTap();
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
@@ -244,9 +264,29 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
           ),
         ),
       ),
+      // ---- Account/Orders/Cart moved here from the header icons, so
+      // they're reachable as a persistent bottom nav bar like the rest
+      // of the app (seller/admin panels use the same pattern). ----
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        onTap: _onBottomNavTap,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(AppColors.primaryValue),
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
+          const BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          BottomNavigationBarItem(
+            icon: Icon(appState.isLoggedIn ? Icons.account_circle : Icons.login),
+            label: appState.isLoggedIn ? 'Account' : 'Login',
+          ),
+        ],
+      ),
     );
   }
 
+  // Header now only carries the title + search bar — account/orders/cart
+  // moved to the bottom nav bar (see build()).
   Widget _buildHeader(AppState appState) {
     return Container(
       color: const Color(AppColors.primaryValue),
@@ -256,35 +296,15 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'ສວນມັງກອມ',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(appState.isLoggedIn ? Icons.account_circle : Icons.login,
-                      color: Colors.white),
-                  tooltip: appState.isLoggedIn ? 'Account' : 'Login',
-                  onPressed: _onAccountTap,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.receipt_long, color: Colors.white),
-                  onPressed: _openOrders,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                  onPressed: _openCart,
-                ),
-              ],
+            const Text(
+              'ສວນມັງກອມ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
