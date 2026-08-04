@@ -45,6 +45,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   double _qty = 1;
   bool _loading = true;
   bool _adding = false;
+  bool _buyingNow = false;
   int _galleryIndex = 0;
 
   @override
@@ -83,7 +84,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      setState(() => _adding = false);
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  // "Buy Now" — adds just this product to the cart, then jumps straight
+  // into checkout so the user can pay for it without hunting through the
+  // cart for other items. Reuses the same login guard as Add to Cart.
+  Future<void> _buyNow() async {
+    final loggedIn = await ensureLoggedIn(context);
+    if (!loggedIn) return;
+    if (!mounted) return;
+    setState(() => _buyingNow = true);
+    try {
+      await _cartService.addToCart(
+        productId: widget.productId,
+        variantId: _selectedVariant?.id,
+        qty: _qty,
+      );
+      if (!mounted) return;
+      // TODO: adjust the route name/screen below to match your app's
+      // actual checkout route if it differs from '/checkout'.
+      Navigator.of(context).pushNamed('/checkout');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _buyingNow = false);
     }
   }
 
@@ -180,7 +209,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // Shared info block (title, rating, price, store, options, qty, button,
+  // Shared info block (title, rating, price, store, options, qty, buttons,
   // description) used by both layouts so behavior stays identical.
   Widget _buildInfoColumn(Product product) {
     final priceFormat = NumberFormat.decimalPattern('en_US');
@@ -370,23 +399,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         const SizedBox(height: 18),
 
-        // Add to cart
-        SizedBox(
-          width: double.infinity,
-          height: 46,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: _LazadaColors.priceRed,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        // Add to Cart + Buy Now, side by side
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 46,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _LazadaColors.priceRed,
+                    side: const BorderSide(color: _LazadaColors.priceRed, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  onPressed: (_adding || _buyingNow) ? null : _addToCart,
+                  icon: const Icon(Icons.shopping_cart_outlined),
+                  label: Text(
+                    _adding ? 'Adding...' : 'Add to Cart',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ),
-            onPressed: _adding ? null : _addToCart,
-            icon: const Icon(Icons.shopping_cart_outlined),
-            label: Text(
-              _adding ? 'Adding...' : 'Add to Cart',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 46,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _LazadaColors.priceRed,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  onPressed: (_adding || _buyingNow) ? null : _buyNow,
+                  child: Text(
+                    _buyingNow ? 'Processing...' : 'Buy Now',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
 
         if (product.description != null && product.description!.isNotEmpty) ...[
