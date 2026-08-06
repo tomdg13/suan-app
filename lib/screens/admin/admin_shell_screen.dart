@@ -12,6 +12,7 @@ import 'views/admin_orders_view.dart';
 import 'views/admin_withdrawals_view.dart';
 import 'views/admin_banners_view.dart';
 import 'views/admin_seller_tools_view.dart';
+import 'admin_payment_qr_upload_screen.dart';
 
 // Below this width the permanent sidebar becomes a Drawer + bottom nav
 // instead of squeezing the content panel. Same breakpoint used across
@@ -55,6 +56,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     ]),
     NavGroup(title: 'Finance', items: [
       NavItem(label: 'Withdrawals', icon: Icons.account_balance_wallet, index: 7),
+      NavItem(label: 'Payment QR', icon: Icons.qr_code, index: 9),
     ]),
     // New: lets the admin operate a store the same way a seller does
     // (Store Profile, Products, Orders) without leaving the admin panel.
@@ -73,6 +75,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     AdminOrdersView(),
     AdminWithdrawalsView(),
     AdminSellerToolsView(),
+    AdminPaymentQrUploadScreen(),
   ];
 
   // Flat label lookup for the mobile AppBar title, keyed by the same
@@ -87,6 +90,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     'All Orders',
     'Withdrawals',
     'My Store',
+    'Payment QR',
   ];
 
   static const _bottomNavItems = [
