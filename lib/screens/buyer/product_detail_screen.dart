@@ -49,6 +49,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _buyingNow = false;
   int _galleryIndex = 0;
 
+  // Available stock for whatever is currently selected — the chosen
+  // variant's stock if one exists, otherwise the base product's stock.
+  double get _maxQtyRaw => _selectedVariant?.stockQty ?? _product?.stockQty ?? 0;
+  int get _maxQty => _maxQtyRaw.floor().clamp(0, 999999);
+  String get _stockLabel =>
+      _maxQtyRaw == _maxQtyRaw.roundToDouble() ? _maxQty.toString() : _maxQtyRaw.toStringAsFixed(1);
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +67,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     setState(() {
       _product = product;
       _selectedVariant = product.variants.isNotEmpty ? product.variants.first : null;
+      _qty = _maxQty > 0 ? 1.0 : 0.0;
       _loading = false;
     });
   }
@@ -355,7 +363,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             children: product.variants.map((v) {
               final selected = v.id == _selectedVariant?.id;
               return GestureDetector(
-                onTap: () => setState(() => _selectedVariant = v),
+                onTap: () => setState(() {
+                  _selectedVariant = v;
+                  _qty = _qty.clamp(_maxQty > 0 ? 1 : 0, _maxQty).toDouble();
+                }),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -389,7 +400,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             const Spacer(),
             _buildQtyButton(
               icon: Icons.remove,
-              onTap: () => setState(() => _qty = (_qty - 1).clamp(1, 999)),
+              onTap: () => setState(() => _qty = (_qty - 1).clamp(1, _maxQty).toDouble()),
             ),
             Container(
               width: 44,
@@ -398,11 +409,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             _buildQtyButton(
               icon: Icons.add,
-              onTap: () => setState(() => _qty += 1),
+              onTap: () => setState(() => _qty = (_qty + 1).clamp(1, _maxQty).toDouble()),
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            _maxQty <= 0 ? 'Out of stock' : '$_stockLabel left in stock',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: _maxQty <= 0
+                  ? const Color(AppColors.errorValue)
+                  : (_maxQty <= 5 ? const Color(AppColors.warningValue) : Colors.grey.shade600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
 
         // Add to Cart + Buy Now, side by side
         Row(
@@ -416,10 +441,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     side: const BorderSide(color: _LazadaColors.priceRed, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
-                  onPressed: (_adding || _buyingNow) ? null : _addToCart,
+                  onPressed: (_adding || _buyingNow || _maxQty <= 0) ? null : _addToCart,
                   icon: const Icon(Icons.shopping_cart_outlined),
                   label: Text(
-                    _adding ? 'Adding...' : 'Add to Cart',
+                    _adding ? 'Adding...' : (_maxQty <= 0 ? 'Out of Stock' : 'Add to Cart'),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -435,9 +460,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
-                  onPressed: (_adding || _buyingNow) ? null : _buyNow,
+                  onPressed: (_adding || _buyingNow || _maxQty <= 0) ? null : _buyNow,
                   child: Text(
-                    _buyingNow ? 'Processing...' : 'Buy Now',
+                    _buyingNow ? 'Processing...' : (_maxQty <= 0 ? 'Out of Stock' : 'Buy Now'),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),

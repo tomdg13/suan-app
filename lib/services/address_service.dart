@@ -20,6 +20,8 @@ class AddressService {
     String? village,
     String? district,
     String? province,
+    double? latitude,
+    double? longitude,
     bool isDefault = false,
   }) async {
     final json = await _api.post(
@@ -32,6 +34,8 @@ class AddressService {
         if (village != null) 'village': village,
         if (district != null) 'district': district,
         if (province != null) 'province': province,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
         'isDefault': isDefault ? 1 : 0,
       },
       auth: true,

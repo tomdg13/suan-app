@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:latlong2/latlong.dart' as latlong;
 import '../../config/constants.dart';
 import '../../models/user_address.dart';
 import '../../services/address_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/payment_qr_service.dart';
+import 'location_picker_screen.dart';
 
 // ---------------------------------------------------------------------
 // BuyerPaymentScreen
@@ -46,6 +50,12 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   String? _qrImageUrl;
   bool _confirming = false;
 
+  // Delivery choice. "Anousith Logistic" and "Standard Delivery" are both
+  // DeliveryMethod.delivery under the hood, just with a different courier
+  // name attached — "Store Pickup" is DeliveryMethod.pickup, no courier.
+  static const _deliveryOptions = <String>['Anousith Logistic', 'Standard Delivery', 'Store Pickup'];
+  String _selectedDeliveryOption = _deliveryOptions.first;
+
   // Quick add-address form controllers.
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -54,6 +64,9 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   final _districtCtrl = TextEditingController();
   final _provinceCtrl = TextEditingController();
   bool _savingAddress = false;
+  bool _locating = false;
+  double? _pickedLatitude;
+  double? _pickedLongitude;
 
   @override
   void initState() {
@@ -104,6 +117,90 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
     }
   }
 
+  Future<void> _useCurrentLocation() async {
+    setState(() => _locating = true);
+    try {
+      // 1. Make sure location services + permission are actually available.
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are turned off. Please enable GPS.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permission denied.');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission permanently denied. Enable it in device settings.');
+      }
+
+      // 2. Get the current GPS position, to use as the map's starting point.
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+      setState(() => _locating = false);
+
+      // 3. Open the map so the buyer can fine-tune the exact pin — GPS
+      //    accuracy alone (especially indoors/on web) is often off by
+      //    tens of meters, so let them drag to the real front door.
+      final confirmed = await Navigator.of(context).push<latlong.LatLng>(
+        MaterialPageRoute(
+          builder: (_) => LocationPickerScreen(
+            initialCenter: latlong.LatLng(position.latitude, position.longitude),
+          ),
+        ),
+      );
+      if (confirmed == null || !mounted) return; // buyer backed out of the map
+
+      // 4. Reverse-geocode the CONFIRMED pin (not the raw GPS point) to
+      //    fill in village/district/province/address automatically. If
+      //    this fails (e.g. web platform limitations, or the point is
+      //    somewhere with no address data), we still keep the
+      //    coordinates — the buyer can type the address fields by hand.
+      try {
+        final geocoding = Geocoding();
+        final placemarks = await geocoding.placemarkFromCoordinates(
+          confirmed.latitude,
+          confirmed.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          if (!mounted) return;
+          setState(() {
+            _lineCtrl.text = [place.street, place.subLocality]
+                .where((p) => p != null && p.isNotEmpty)
+                .join(', ');
+            _villageCtrl.text = place.subLocality ?? '';
+            _districtCtrl.text = place.locality ?? '';
+            _provinceCtrl.text = place.administrativeArea ?? '';
+          });
+        }
+      } catch (_) {
+        // Non-fatal — reverse geocoding isn't available on every platform
+        // (e.g. Flutter Web needs extra setup). Coordinates are still saved.
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _pickedLatitude = confirmed.latitude;
+        _pickedLongitude = confirmed.longitude;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location captured')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _locating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not get location: $e')),
+      );
+    }
+  }
+
   Future<void> _saveAddress() async {
     if (_nameCtrl.text.trim().isEmpty ||
         _phoneCtrl.text.trim().isEmpty ||
@@ -122,6 +219,8 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         village: _villageCtrl.text.trim().isEmpty ? null : _villageCtrl.text.trim(),
         district: _districtCtrl.text.trim().isEmpty ? null : _districtCtrl.text.trim(),
         province: _provinceCtrl.text.trim().isEmpty ? null : _provinceCtrl.text.trim(),
+        latitude: _pickedLatitude,
+        longitude: _pickedLongitude,
         isDefault: true,
       );
       if (!mounted) return;
@@ -149,9 +248,12 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
     }
     setState(() => _confirming = true);
     try {
+      final isPickup = _selectedDeliveryOption == 'Store Pickup';
       final order = await _ordersService.checkout(
         addressId: _selectedAddressId!,
         paymentMethod: PaymentMethod.qrPay,
+        deliveryMethod: isPickup ? DeliveryMethod.pickup : DeliveryMethod.delivery,
+        courierName: isPickup ? null : _selectedDeliveryOption,
       );
       if (!mounted) return;
       setState(() => _confirming = false);
@@ -195,6 +297,8 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                         _buildAmountCard(),
                         const SizedBox(height: 16),
                         _buildAddressSection(),
+                        const SizedBox(height: 16),
+                        _buildDeliveryMethodSection(),
                         const SizedBox(height: 16),
                         _buildQrSection(),
                         const SizedBox(height: 20),
@@ -261,6 +365,37 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           children: [
             const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             const SizedBox(height: 10),
+
+            // GPS button — fills the fields below automatically when
+            // possible; coordinates are saved either way.
+            SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(AppColors.primaryValue),
+                  side: const BorderSide(color: Color(AppColors.primaryValue)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                onPressed: _locating ? null : _useCurrentLocation,
+                icon: _locating
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location, size: 16),
+                label: Text(_locating ? 'Getting location...' : 'Pin location on map'),
+              ),
+            ),
+            if (_pickedLatitude != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Location: ${_pickedLatitude!.toStringAsFixed(5)}, ${_pickedLongitude!.toStringAsFixed(5)}',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+            ],
+            const SizedBox(height: 10),
+
             _addressField(_nameCtrl, 'Recipient name'),
             const SizedBox(height: 8),
             _addressField(_phoneCtrl, 'Phone', keyboardType: TextInputType.phone),
@@ -303,7 +438,17 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
               const Text('Deliver to', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const Spacer(),
               TextButton(
-                onPressed: () => setState(() => _showAddAddressForm = true),
+                onPressed: () => setState(() {
+                  _showAddAddressForm = true;
+                  _pickedLatitude = null;
+                  _pickedLongitude = null;
+                  _nameCtrl.clear();
+                  _phoneCtrl.clear();
+                  _lineCtrl.clear();
+                  _villageCtrl.clear();
+                  _districtCtrl.clear();
+                  _provinceCtrl.clear();
+                }),
                 child: const Text('+ Add new'),
               ),
             ],
@@ -331,6 +476,39 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         labelText: label,
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryMethodSection() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(AppColors.borderValue)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Delivery Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ..._deliveryOptions.map((option) => RadioListTile<String>(
+                value: option,
+                groupValue: _selectedDeliveryOption,
+                onChanged: (v) => setState(() => _selectedDeliveryOption = v!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                activeColor: const Color(AppColors.primaryValue),
+                title: Text(option, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  option == 'Store Pickup'
+                      ? 'Collect your order from the store'
+                      : option == 'Anousith Logistic'
+                          ? 'Delivered by Anousith Logistic courier'
+                          : 'Standard delivery to your address',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              )),
+        ],
       ),
     );
   }

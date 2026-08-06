@@ -18,6 +18,10 @@ dependencies:
   crop_your_image: ^2.0.0
   image: ^4.2.0
   qr_flutter: ^4.1.0
+  geolocator: ^14.0.2
+  geocoding: ^5.0.0
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
