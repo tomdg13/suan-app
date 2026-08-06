@@ -7,6 +7,7 @@ import '../../services/cart_service.dart';
 import '../../utils/auth_guard.dart';
 import 'store_page_screen.dart';
 import 'fullscreen_gallery_screen.dart';
+import 'buyer_payment_screen.dart';
 
 // Maps the Lazada-style layout onto this app's real brand palette
 // (AppColors from config/constants.dart) instead of Lazada's orange/red.
@@ -103,9 +104,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         qty: _qty,
       );
       if (!mounted) return;
-      // TODO: adjust the route name/screen below to match your app's
-      // actual checkout route if it differs from '/checkout'.
-      Navigator.of(context).pushNamed('/checkout');
+      final price = _selectedVariant?.price ?? _product!.basePrice;
+      final total = price * _qty;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BuyerPaymentScreen(amount: total),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
