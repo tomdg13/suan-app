@@ -27,6 +27,17 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  
+  # Add these lines to fix the sizing inside the Android container:
+  adaptive_icon_background: "assets/icon/app_icon.png" 
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  adaptive_icon_foreground_inset: 16  # Reduces the safe-zone padding to 0 so the icon fills the entire space
 
 flutter:
   uses-material-design: true
