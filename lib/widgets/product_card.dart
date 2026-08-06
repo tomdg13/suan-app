@@ -12,6 +12,8 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final priceFormat = NumberFormat.decimalPattern('en_US');
+    final outOfStock = product.stockQty <= 0;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -50,6 +52,20 @@ class ProductCard extends StatelessWidget {
                           SizedBox(width: 2),
                           Text('ດ່ວນ', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                         ],
+                      ),
+                    ),
+                  ),
+                // Out-of-stock takes priority over the inactive overlay
+                // below — a buyer cares more about "can I buy this right
+                // now" than the underlying admin isActive flag.
+                if (outOfStock && product.isActive)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'ຫມົດສະຕັອກ',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -94,6 +110,17 @@ class ProductCard extends StatelessWidget {
                       Text('ຂາຍແລ້ວ ${product.soldCount}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                     ],
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    outOfStock ? 'ຫມົດສະຕັອກ' : 'ເຫຼືອ ${_formatStock(product.stockQty)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: outOfStock
+                          ? const Color(AppColors.errorValue)
+                          : (product.stockQty <= 5 ? const Color(AppColors.warningValue) : Colors.grey.shade600),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -101,5 +128,9 @@ class ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatStock(double qty) {
+    return qty == qty.roundToDouble() ? qty.toInt().toString() : qty.toStringAsFixed(1);
   }
 }
