@@ -95,6 +95,28 @@ class OrdersService {
       throw Exception('Failed to submit payment proof (${response.statusCode}): ${response.body}');
     }
 
+  /// Server-side OCR (tesseract.js) fallback for platforms without
+  /// on-device OCR (Flutter Web — google_mlkit has no web implementation).
+  /// Matches POST /orders/ocr-scan (multipart field "file").
+  Future<Map<String, dynamic>> ocrScan({
+    required Uint8List imageBytes,
+    required String filename,
+  }) async {
+    final token = await _api.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/orders/ocr-scan');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll({
+        if (token != null) 'Authorization': 'Bearer $token',
+      })
+      ..files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: filename));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('OCR scan failed (${response.statusCode}): ${response.body}');
+    }
+
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

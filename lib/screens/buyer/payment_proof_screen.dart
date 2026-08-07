@@ -12,13 +12,14 @@ import '../../services/orders_service.dart';
 // After the buyer scans the QR and pays in their own banking app, they
 // come back here to upload the bank's success screenshot as proof.
 //
-// On mobile (Android/iOS), on-device OCR (google_mlkit_text_recognition)
-// automatically scans the image for a line like:
-//   "Reference ID 1: FQR26218PM7O1316"
-// and pre-fills the RRN text box with just the code. The buyer can edit
-// it if OCR got it wrong or picked the wrong reference line. OCR is not
-// available on Flutter Web (ML Kit is a native plugin) — web users just
-// type the RRN in manually.
+// OCR happens two different ways depending on platform:
+//  - Mobile (Android/iOS): on-device OCR via google_mlkit_text_recognition
+//    — fast, works offline.
+//  - Web: google_mlkit has no web implementation at all, so instead we
+//    send the image to POST /orders/ocr-scan, which runs server-side OCR
+//    (tesseract.js) and returns the extracted RRN the same way.
+// Either way, the RRN textbox is pre-filled but stays fully editable —
+// the buyer can correct it if OCR got it wrong.
 // ---------------------------------------------------------------------
 
 class PaymentProofScreen extends StatefulWidget {
@@ -77,9 +78,27 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
       _error = null;
     });
 
-    // OCR only works on mobile (ML Kit is a native plugin, no web support).
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      // ML Kit has no web implementation — use the server-side OCR
+      // endpoint instead.
+      await _runServerOcr(bytes, picked.name);
+    } else {
       await _runOcr(picked.path);
+    }
+  }
+
+  Future<void> _runServerOcr(Uint8List bytes, String filename) async {
+    setState(() => _scanning = true);
+    try {
+      final result = await _ordersService.ocrScan(imageBytes: bytes, filename: filename);
+      final rrn = result['rrn'] as String?;
+      if (rrn != null && rrn.isNotEmpty && mounted) {
+        setState(() => _rrnController.text = rrn);
+      }
+    } catch (_) {
+      // Non-fatal — buyer can still type the RRN manually.
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
@@ -247,7 +266,7 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
               if (kIsWeb) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Automatic scanning isn\'t available on web — please type it in manually.',
+                  'Scanning runs on our server for web — double check the result.',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                 ),
               ],
