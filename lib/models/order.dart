@@ -43,6 +43,8 @@ class OrderModel {
   final double totalAmount;
   final DateTime orderDate;
   final String? storeName;
+  final String? paymentProofUrl;
+  final String? rrn;
   final List<OrderItemModel> items;
 
   OrderModel({
@@ -53,8 +55,16 @@ class OrderModel {
     required this.totalAmount,
     required this.orderDate,
     this.storeName,
+    this.paymentProofUrl,
+    this.rrn,
     this.items = const [],
   });
+
+  /// True once the buyer has uploaded a screenshot + RRN, even before an
+  /// admin has confirmed it. Used to distinguish "hasn't paid at all" from
+  /// "paid and waiting on confirmation" — both are paymentStatus: unpaid
+  /// on the backend since there's no separate pending-confirmation state.
+  bool get proofSubmitted => paymentProofUrl != null && paymentProofUrl!.isNotEmpty;
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
@@ -65,6 +75,8 @@ class OrderModel {
       totalAmount: double.tryParse('${json['totalAmount']}') ?? 0,
       orderDate: DateTime.tryParse(json['orderDate'] ?? '') ?? DateTime.now(),
       storeName: json['store']?['storeName'],
+      paymentProofUrl: json['paymentProofUrl'],
+      rrn: json['rrn'],
       items: (json['items'] as List<dynamic>? ?? [])
           .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
           .toList(),

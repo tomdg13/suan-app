@@ -29,8 +29,13 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
+  // When set, this screen pays for an ALREADY-CREATED order (e.g. the
+  // buyer tapped "Pay Now" on an existing unpaid order from My Orders)
+  // instead of creating a new one from the cart. Address/delivery-method
+  // selection is skipped since those were already set at checkout time.
+  final int? existingOrderId;
 
-  const BuyerPaymentScreen({super.key, required this.amount});
+  const BuyerPaymentScreen({super.key, required this.amount, this.existingOrderId});
 
   @override
   State<BuyerPaymentScreen> createState() => _BuyerPaymentScreenState();
@@ -92,6 +97,17 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       _loadError = null;
     });
     try {
+      if (widget.existingOrderId != null) {
+        // Paying an existing order — only need the QR, no address/cart work.
+        final qrUrl = await _qrService.fetchCurrentQr();
+        if (!mounted) return;
+        setState(() {
+          _qrImageUrl = qrUrl;
+          _loading = false;
+        });
+        return;
+      }
+
       final results = await Future.wait([
         _addressService.findMine(),
         _qrService.fetchCurrentQr(),
@@ -241,6 +257,20 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   }
 
   Future<void> _confirmPaid() async {
+    // Paying an EXISTING order — skip checkout entirely, go straight to
+    // uploading proof for that order.
+    if (widget.existingOrderId != null) {
+      setState(() => _confirming = true);
+      if (!mounted) return;
+      setState(() => _confirming = false);
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderId: widget.existingOrderId!)),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+      return;
+    }
+
     if (_selectedAddressId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add or select a delivery address first')),
@@ -320,10 +350,12 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                       children: [
                         _buildAmountCard(),
                         const SizedBox(height: 16),
-                        _buildAddressSection(),
-                        const SizedBox(height: 16),
-                        _buildDeliveryMethodSection(),
-                        const SizedBox(height: 16),
+                        if (widget.existingOrderId == null) ...[
+                          _buildAddressSection(),
+                          const SizedBox(height: 16),
+                          _buildDeliveryMethodSection(),
+                          const SizedBox(height: 16),
+                        ],
                         _buildQrSection(),
                         const SizedBox(height: 20),
                         _buildConfirmButton(),
@@ -592,7 +624,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         ),
         onPressed: (_confirming || _qrImageUrl == null) ? null : _confirmPaid,
         child: Text(
-          _confirming ? 'Placing order...' : "I've Paid",
+          _confirming ? (widget.existingOrderId != null ? 'Loading...' : 'Placing order...') : "I've Paid",
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
