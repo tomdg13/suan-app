@@ -47,6 +47,25 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
     super.dispose();
   }
 
+  void _showFullscreen(BuildContext context) {
+    if (_imageBytes == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.memory(_imageBytes!),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (picked == null) return;
@@ -163,10 +182,10 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
 
               // Screenshot preview / picker
               GestureDetector(
-                onTap: _pickImage,
+                onTap: _imageBytes != null ? () => _showFullscreen(context) : _pickImage,
                 child: Container(
                   width: double.infinity,
-                  height: 280,
+                  constraints: const BoxConstraints(minHeight: 280, maxHeight: 520),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(AppColors.borderValue)),
@@ -174,7 +193,7 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _imageBytes != null
-                      ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                      ? Image.memory(_imageBytes!, fit: BoxFit.contain, alignment: Alignment.center)
                       : const Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -187,6 +206,13 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
                         ),
                 ),
               ),
+              if (_imageBytes != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Tap the image to view full-size',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
               const SizedBox(height: 10),
               if (_imageBytes != null)
                 OutlinedButton.icon(
