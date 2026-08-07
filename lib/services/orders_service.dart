@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import '../config/constants.dart';
 import 'api_client.dart';
 
 /// Matches suan-api's PaymentMethod enum exactly (order.entity.ts).
@@ -44,7 +48,7 @@ class OrdersService {
   /// [courierName] is only meaningful when [deliveryMethod] is
   /// DeliveryMethod.delivery — e.g. "Anousith Logistic". Ignored/sent as
   /// null for pickup orders.
-  Future<Map<String, dynamic>> checkout({
+  Future<dynamic> checkout({
     required int addressId,
     PaymentMethod? paymentMethod,
     int? promotionId,
@@ -63,6 +67,34 @@ class OrdersService {
       },
       auth: true,
     );
-    return json as Map<String, dynamic>;
+    return json; // backend returns a LIST — one order per store in the cart
+  }
+
+  /// Uploads the buyer's bank payment-confirmation screenshot + the RRN
+  /// they read off it. Matches POST /orders/:id/payment-proof
+  /// (multipart field "file", plus a "rrn" text field).
+  Future<Map<String, dynamic>> submitPaymentProof({
+    required int orderId,
+    required Uint8List imageBytes,
+    required String filename,
+    required String rrn,
+  }) async {
+    final token = await _api.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/orders/$orderId/payment-proof');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll({
+        if (token != null) 'Authorization': 'Bearer $token',
+      })
+      ..fields['rrn'] = rrn
+      ..files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: filename));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to submit payment proof (${response.statusCode}): ${response.body}');
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

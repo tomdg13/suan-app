@@ -1,0 +1,256 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../../config/constants.dart';
+import '../../services/orders_service.dart';
+
+// ---------------------------------------------------------------------
+// PaymentProofScreen
+//
+// After the buyer scans the QR and pays in their own banking app, they
+// come back here to upload the bank's success screenshot as proof.
+//
+// On mobile (Android/iOS), on-device OCR (google_mlkit_text_recognition)
+// automatically scans the image for a line like:
+//   "Reference ID 1: FQR26218PM7O1316"
+// and pre-fills the RRN text box with just the code. The buyer can edit
+// it if OCR got it wrong or picked the wrong reference line. OCR is not
+// available on Flutter Web (ML Kit is a native plugin) — web users just
+// type the RRN in manually.
+// ---------------------------------------------------------------------
+
+class PaymentProofScreen extends StatefulWidget {
+  final int orderId;
+
+  const PaymentProofScreen({super.key, required this.orderId});
+
+  @override
+  State<PaymentProofScreen> createState() => _PaymentProofScreenState();
+}
+
+class _PaymentProofScreenState extends State<PaymentProofScreen> {
+  final _picker = ImagePicker();
+  final _ordersService = OrdersService();
+  final _rrnController = TextEditingController();
+
+  Uint8List? _imageBytes;
+  String? _imageName;
+  bool _scanning = false;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _rrnController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _imageBytes = bytes;
+      _imageName = picked.name;
+      _error = null;
+    });
+
+    // OCR only works on mobile (ML Kit is a native plugin, no web support).
+    if (!kIsWeb) {
+      await _runOcr(picked.path);
+    }
+  }
+
+  Future<void> _runOcr(String path) async {
+    setState(() => _scanning = true);
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    try {
+      final input = InputImage.fromFilePath(path);
+      final result = await recognizer.processImage(input);
+      final extracted = _extractRrn(result.text);
+      if (extracted != null && mounted) {
+        setState(() => _rrnController.text = extracted);
+      }
+    } catch (_) {
+      // Non-fatal — buyer can still type the RRN manually.
+    } finally {
+      await recognizer.close();
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  /// Looks for "Reference ID 1: <code>" first (the secondary/QR reference
+  /// shown on LDB Bank receipts, e.g. "FQR26218PM7O1316"). Falls back to
+  /// a bare "FQR..." token, then to the first plain "Reference ID: <code>"
+  /// if neither of those match.
+  String? _extractRrn(String ocrText) {
+    final refId1 = RegExp(r'Reference\s*ID\s*1\s*[:.]?\s*([A-Za-z0-9]+)', caseSensitive: false)
+        .firstMatch(ocrText);
+    if (refId1 != null) return refId1.group(1);
+
+    final fqrToken = RegExp(r'\bFQR[A-Za-z0-9]+\b').firstMatch(ocrText);
+    if (fqrToken != null) return fqrToken.group(0);
+
+    final refId = RegExp(r'Reference\s*ID\s*[:.]?\s*([A-Za-z0-9]+)', caseSensitive: false)
+        .firstMatch(ocrText);
+    if (refId != null) return refId.group(1);
+
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (_imageBytes == null) {
+      setState(() => _error = 'Please upload the payment screenshot first');
+      return;
+    }
+    if (_rrnController.text.trim().isEmpty) {
+      setState(() => _error = 'Please enter the RRN / reference number');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await _ordersService.submitPaymentProof(
+        orderId: widget.orderId,
+        imageBytes: _imageBytes!,
+        filename: _imageName ?? 'payment_proof.jpg',
+        rrn: _rrnController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not submit: $e';
+        _submitting = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        surfaceTintColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        title: const Text(
+          'Payment Confirmation',
+          style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Upload the success screenshot from your banking app. '
+                'We\'ll try to read the reference number automatically — '
+                'please double check it before submitting.',
+                style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+
+              // Screenshot preview / picker
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(AppColors.borderValue)),
+                    color: Colors.grey.shade50,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _imageBytes != null
+                      ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                      : const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_a_photo_outlined, size: 40, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text('Tap to upload screenshot', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (_imageBytes != null)
+                OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  label: const Text('Choose a different image'),
+                ),
+
+              const SizedBox(height: 20),
+
+              // RRN field
+              Row(
+                children: [
+                  const Text('RRN / Reference Number', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  if (_scanning) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 6),
+                    Text('scanning...', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _rrnController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. FQR26218PM7O1316',
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+              ),
+              if (kIsWeb) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Automatic scanning isn\'t available on web — please type it in manually.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
+
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              ],
+
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(AppColors.primaryValue),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  onPressed: _submitting ? null : _submit,
+                  child: Text(
+                    _submitting ? 'Submitting...' : 'Submit Payment Confirmation',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

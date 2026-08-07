@@ -9,6 +9,7 @@ import '../../services/address_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/payment_qr_service.dart';
 import 'location_picker_screen.dart';
+import 'payment_proof_screen.dart';
 
 // ---------------------------------------------------------------------
 // BuyerPaymentScreen
@@ -249,7 +250,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
     setState(() => _confirming = true);
     try {
       final isPickup = _selectedDeliveryOption == 'Store Pickup';
-      final order = await _ordersService.checkout(
+      final result = await _ordersService.checkout(
         addressId: _selectedAddressId!,
         paymentMethod: PaymentMethod.qrPay,
         deliveryMethod: isPickup ? DeliveryMethod.pickup : DeliveryMethod.delivery,
@@ -257,10 +258,33 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       );
       if (!mounted) return;
       setState(() => _confirming = false);
-      // Order created with status pending / paymentStatus unpaid — an
-      // admin confirms payment manually. Pop back with the order so the
-      // caller can show an order-confirmation screen.
-      Navigator.of(context).pop(order);
+
+      // Backend returns a LIST (one order per store in the cart). Take
+      // the first one — if the buyer had items from multiple stores,
+      // this only attaches payment proof to the first order; the rest
+      // stay pending until confirmed separately.
+      final orders = result is List ? result : [result];
+      if (orders.isEmpty) {
+        Navigator.of(context).pop(result);
+        return;
+      }
+      final firstOrder = orders.first as Map<String, dynamic>;
+      final orderId = firstOrder['id'] as int?;
+
+      if (orderId == null) {
+        // Shouldn't happen, but don't strand the buyer if it does.
+        Navigator.of(context).pop(result);
+        return;
+      }
+
+      // Send them straight into the payment-proof upload step so the
+      // RRN gets captured while it's still fresh in their banking app.
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderId: orderId)),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
     } catch (e) {
       if (!mounted) return;
       setState(() => _confirming = false);
