@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/constants.dart';
@@ -85,18 +86,33 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       _error = null;
     });
     try {
+      final searchText = _searchCtrl.text.trim();
+      final isSearching = searchText.isNotEmpty;
+
       final results = await Future.wait([
         _catalogService.getCategories(),
         _productService.getProducts(
           categoryId: _selectedCategoryId,
-          search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+          search: isSearching ? searchText : null,
         ),
         _bannerService.getActiveBanners(),
         _storeService.getStores(featuredOnly: true),
       ]);
+
+      List<Product> allProducts = results[1] as List<Product>;
+
+      // When not searching: only show active products that are in stock,
+      // then shuffle so the grid looks different on every visit/refresh.
+      if (!isSearching) {
+        allProducts = allProducts
+            .where((p) => p.isActive && p.stockQty > 0)
+            .toList()
+          ..shuffle(Random());
+      }
+
       setState(() {
         _categories = results[0] as List<ProductCategory>;
-        _products = results[1] as List<Product>;
+        _products = allProducts;
         _banners = results[2] as List<BannerItem>;
         _featuredStores = results[3] as List<Store>;
       });
@@ -170,10 +186,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     );
   }
 
-  // Bottom nav is presentational only here — Home is always the "active"
-  // page (index 0) since Orders/Cart/Account push a new screen on top
-  // rather than replacing this one. Tapping them re-runs the same auth
-  // + navigation logic the old header icons used, just from the bottom bar.
   void _onBottomNavTap(int index) {
     switch (index) {
       case 0:
@@ -197,10 +209,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
-        // On a wide desktop browser window, letting everything stretch
-        // full-bleed is what made the banner (and product grid) look
-        // oddly long/thin. Capping content to a max width and centering
-        // it keeps proportions sane the way marketplace sites do on web.
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
@@ -264,9 +272,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
           ),
         ),
       ),
-      // ---- Account/Orders/Cart moved here from the header icons, so
-      // they're reachable as a persistent bottom nav bar like the rest
-      // of the app (seller/admin panels use the same pattern). ----
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         onTap: _onBottomNavTap,
@@ -285,8 +290,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     );
   }
 
-  // Header now only carries the title + search bar — account/orders/cart
-  // moved to the bottom nav bar (see build()).
   Widget _buildHeader(AppState appState) {
     return Container(
       color: const Color(AppColors.primaryValue),
@@ -338,10 +341,6 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     return Column(
       children: [
         AspectRatio(
-          // Scales with width instead of staying a fixed 140px tall —
-          // on a wide desktop/Chrome window a fixed height made this
-          // look like a thin, stretched panoramic strip. 2.8:1 reads
-          // closer to a normal marketplace hero banner at any width.
           aspectRatio: 2.8,
           child: PageView.builder(
             controller: _bannerController,
@@ -361,40 +360,40 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
                       Image.network(
                         '${ApiConfig.mediaBaseUrl}${banner.imageUrl}',
                         fit: BoxFit.cover,
-                    ),
-                    if (banner.title != null || banner.subtitle != null)
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [Colors.black.withValues(alpha: 0.45), Colors.transparent],
+                      ),
+                      if (banner.title != null || banner.subtitle != null)
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [Colors.black.withValues(alpha: 0.45), Colors.transparent],
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(20),
+                          alignment: Alignment.centerLeft,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (banner.title != null)
+                                Text(
+                                  banner.title!,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                              if (banner.subtitle != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  banner.subtitle!,
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        padding: const EdgeInsets.all(20),
-                        alignment: Alignment.centerLeft,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (banner.title != null)
-                              Text(
-                                banner.title!,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                            if (banner.subtitle != null) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                banner.subtitle!,
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -561,8 +560,9 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   }
 
   Widget _buildBestSellers() {
-    if (_products.isEmpty) return const SizedBox.shrink();
-    final bestSellers = [..._products]..sort((a, b) => b.soldCount.compareTo(a.soldCount));
+    // Best sellers: only in-stock active products, sorted by soldCount desc
+    final inStock = _products.where((p) => p.isActive && p.stockQty > 0).toList();
+    final bestSellers = [...inStock]..sort((a, b) => b.soldCount.compareTo(a.soldCount));
     final topSellers = bestSellers.take(8).toList();
     if (topSellers.isEmpty || topSellers.first.soldCount == 0) return const SizedBox.shrink();
 

@@ -45,6 +45,8 @@ class OrderModel {
   final String? storeName;
   final String? paymentProofUrl;
   final String? rrn;
+  final String? buyerName;
+  final String? buyerPhone;
   final List<OrderItemModel> items;
 
   OrderModel({
@@ -57,6 +59,8 @@ class OrderModel {
     this.storeName,
     this.paymentProofUrl,
     this.rrn,
+    this.buyerName,
+    this.buyerPhone,
     this.items = const [],
   });
 
@@ -77,6 +81,8 @@ class OrderModel {
       storeName: json['store']?['storeName'],
       paymentProofUrl: json['paymentProofUrl'],
       rrn: json['rrn'],
+      buyerName: json['user']?['fullName'],
+      buyerPhone: json['user']?['phone'],
       items: (json['items'] as List<dynamic>? ?? [])
           .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
           .toList(),
