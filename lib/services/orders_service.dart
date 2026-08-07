@@ -95,6 +95,9 @@ class OrdersService {
       throw Exception('Failed to submit payment proof (${response.statusCode}): ${response.body}');
     }
 
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// Server-side OCR (tesseract.js) fallback for platforms without
   /// on-device OCR (Flutter Web — google_mlkit has no web implementation).
   /// Matches POST /orders/ocr-scan (multipart field "file").
