@@ -41,6 +41,7 @@ class OrderModel {
   final String status;
   final String paymentStatus;
   final double totalAmount;
+  final double deliveryFee;
   final DateTime orderDate;
   final String? storeName;
   final String? paymentProofUrl;
@@ -55,6 +56,7 @@ class OrderModel {
     required this.status,
     required this.paymentStatus,
     required this.totalAmount,
+    this.deliveryFee = 0,
     required this.orderDate,
     this.storeName,
     this.paymentProofUrl,
@@ -77,6 +79,7 @@ class OrderModel {
       status: json['status'] ?? 'pending',
       paymentStatus: json['paymentStatus'] ?? 'unpaid',
       totalAmount: double.tryParse('${json['totalAmount']}') ?? 0,
+      deliveryFee: double.tryParse('${json['deliveryFee']}') ?? 0,
       orderDate: DateTime.tryParse(json['orderDate'] ?? '') ?? DateTime.now(),
       storeName: json['store']?['storeName'],
       paymentProofUrl: json['paymentProofUrl'],

@@ -113,7 +113,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       if (!mounted) return;
       final price = _selectedVariant?.price ?? _product!.basePrice;
-      final total = price * _qty;
+      // Backend adds a flat 20,000 ກີບ delivery fee per store at checkout
+      // (DEFAULT_DELIVERY_FEE in orders.service.ts) — include it here so
+      // the amount shown matches what checkout will actually charge.
+      final total = (price * _qty) + 20000;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BuyerPaymentScreen(amount: total),

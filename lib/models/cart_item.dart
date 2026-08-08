@@ -6,6 +6,7 @@ class CartItem {
   final String productName;
   final double unitPrice;
   final String? variantLabel;
+  final String? imageUrl;
 
   CartItem({
     required this.id,
@@ -15,6 +16,7 @@ class CartItem {
     required this.productName,
     required this.unitPrice,
     this.variantLabel,
+    this.imageUrl,
   });
 
   double get subtotal => qty * unitPrice;
@@ -22,6 +24,9 @@ class CartItem {
   factory CartItem.fromJson(Map<String, dynamic> json) {
     final product = json['product'] ?? {};
     final variant = json['variant'];
+    final images = product['images'] as List<dynamic>?;
+    final firstImage = (images != null && images.isNotEmpty) ? images.first : null;
+
     return CartItem(
       id: json['id'],
       productId: json['productId'],
@@ -32,6 +37,7 @@ class CartItem {
           ? double.tryParse('${variant['price']}') ?? 0
           : double.tryParse('${product['basePrice']}') ?? 0,
       variantLabel: variant != null ? variant['variantLabel'] : null,
+      imageUrl: firstImage?['imageUrl'],
     );
   }
 }
