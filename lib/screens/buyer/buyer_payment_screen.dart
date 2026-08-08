@@ -29,13 +29,17 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
+  // What's being paid for, shown under the amount so the buyer (and an
+  // admin reviewing payment proof later) can see what this payment
+  // actually covers — e.g. ("ໝາກທ້ວາ x1", imageUrl).
+  final List<({String name, String? imageUrl})> items;
   // When set, this screen pays for an ALREADY-CREATED order (e.g. the
   // buyer tapped "Pay Now" on an existing unpaid order from My Orders)
   // instead of creating a new one from the cart. Address/delivery-method
   // selection is skipped since those were already set at checkout time.
   final int? existingOrderId;
 
-  const BuyerPaymentScreen({super.key, required this.amount, this.existingOrderId});
+  const BuyerPaymentScreen({super.key, required this.amount, this.items = const [], this.existingOrderId});
 
   @override
   State<BuyerPaymentScreen> createState() => _BuyerPaymentScreenState();
@@ -264,7 +268,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       if (!mounted) return;
       setState(() => _confirming = false);
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderId: widget.existingOrderId!)),
+        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderIds: [widget.existingOrderId!])),
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -289,19 +293,22 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       if (!mounted) return;
       setState(() => _confirming = false);
 
-      // Backend returns a LIST (one order per store in the cart). Take
-      // the first one — if the buyer had items from multiple stores,
-      // this only attaches payment proof to the first order; the rest
-      // stay pending until confirmed separately.
+      // Backend returns a LIST (one order per store in the cart). A
+      // single QR payment covers ALL of them together, so the proof +
+      // RRN needs to be attached to every order created here, not just
+      // the first — otherwise stores after the first stay stuck at
+      // "unpaid" even though the buyer already paid for everything.
       final orders = result is List ? result : [result];
       if (orders.isEmpty) {
         Navigator.of(context).pop(result);
         return;
       }
-      final firstOrder = orders.first as Map<String, dynamic>;
-      final orderId = firstOrder['id'] as int?;
+      final orderIds = orders
+          .map((o) => (o as Map<String, dynamic>)['id'] as int?)
+          .whereType<int>()
+          .toList();
 
-      if (orderId == null) {
+      if (orderIds.isEmpty) {
         // Shouldn't happen, but don't strand the buyer if it does.
         Navigator.of(context).pop(result);
         return;
@@ -311,7 +318,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       // RRN gets captured while it's still fresh in their banking app.
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderId: orderId)),
+        MaterialPageRoute(builder: (_) => PaymentProofScreen(orderIds: orderIds)),
       );
       if (!mounted) return;
       Navigator.of(context).pop(result);
@@ -403,6 +410,44 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
               color: Color(AppColors.primaryValue),
             ),
           ),
+          if (widget.items.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(height: 1, color: const Color(AppColors.borderValue)),
+            const SizedBox(height: 10),
+            ...widget.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(AppColors.borderValue)),
+                        color: Colors.white,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: item.imageUrl != null
+                          ? Image.network(
+                              '${ApiConfig.mediaBaseUrl}${item.imageUrl}',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 16, color: Colors.black26),
+                            )
+                          : const Icon(Icons.image, size: 16, color: Colors.black26),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 13, color: Color(AppColors.textDarkValue)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -127,8 +127,19 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _goToPayment() {
+    // Items for the SELECTED cart items only, e.g. "ໝາກທ້ວາ x1" + image.
+    final items = _groups
+        .expand((g) => g.items)
+        .where((i) => _selectedIds.contains(i.id))
+        .map((i) {
+          final qtyLabel = i.qty == i.qty.roundToDouble() ? i.qty.toInt().toString() : i.qty.toString();
+          final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
+          return (name: '${i.productName}$variantSuffix x$qtyLabel', imageUrl: i.imageUrl);
+        })
+        .toList();
+
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => BuyerPaymentScreen(amount: _grandTotal)),
+      MaterialPageRoute(builder: (_) => BuyerPaymentScreen(amount: _grandTotal, items: items)),
     ).then((_) => _load()); // refresh cart after returning
   }
 

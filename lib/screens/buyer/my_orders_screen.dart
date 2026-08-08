@@ -207,7 +207,15 @@ class _OrderCard extends StatelessWidget {
     if (action!.label == 'Pay Now') {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => BuyerPaymentScreen(amount: order.totalAmount, existingOrderId: order.id),
+          builder: (_) => BuyerPaymentScreen(
+            amount: order.totalAmount,
+            existingOrderId: order.id,
+            items: order.items.map((i) {
+              final qtyLabel = i.qty == i.qty.roundToDouble() ? i.qty.toInt().toString() : i.qty.toString();
+              final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
+              return (name: '${i.itemName}$variantSuffix x$qtyLabel', imageUrl: i.imageUrl);
+            }).toList(),
+          ),
         ),
       );
       onChanged(); // refresh the list — status may now show "Payment Submitted"

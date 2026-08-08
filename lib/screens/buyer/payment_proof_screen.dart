@@ -23,9 +23,14 @@ import '../../services/orders_service.dart';
 // ---------------------------------------------------------------------
 
 class PaymentProofScreen extends StatefulWidget {
-  final int orderId;
+  // A single QR payment can cover MULTIPLE orders at once — checkout
+  // creates one order per store in the cart, but the buyer pays for
+  // all of them together in one scan. So the same screenshot + RRN
+  // needs to be attached to every order created in that checkout, not
+  // just the first one.
+  final List<int> orderIds;
 
-  const PaymentProofScreen({super.key, required this.orderId});
+  const PaymentProofScreen({super.key, required this.orderIds});
 
   @override
   State<PaymentProofScreen> createState() => _PaymentProofScreenState();
@@ -154,12 +159,18 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
       _error = null;
     });
     try {
-      await _ordersService.submitPaymentProof(
-        orderId: widget.orderId,
-        imageBytes: _imageBytes!,
-        filename: _imageName ?? 'payment_proof.jpg',
-        rrn: _rrnController.text.trim(),
-      );
+      // Submit the SAME screenshot + RRN to every order created by this
+      // checkout — a single QR payment can cover multiple orders (one
+      // per store in the cart), so each of them needs the proof attached,
+      // not just the first.
+      for (final id in widget.orderIds) {
+        await _ordersService.submitPaymentProof(
+          orderId: id,
+          imageBytes: _imageBytes!,
+          filename: _imageName ?? 'payment_proof.jpg',
+          rrn: _rrnController.text.trim(),
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

@@ -119,7 +119,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final total = (price * _qty) + 20000;
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => BuyerPaymentScreen(amount: total),
+          builder: (_) => BuyerPaymentScreen(
+            amount: total,
+            items: [
+              (
+                name: '${_product!.nameLao}'
+                    '${_selectedVariant != null ? ' (${_selectedVariant!.variantLabel})' : ''}'
+                    ' x${_qty == _qty.roundToDouble() ? _qty.toInt() : _qty}',
+                imageUrl: _product!.imageUrls.isNotEmpty ? _product!.imageUrls.first : null,
+              ),
+            ],
+          ),
         ),
       );
     } catch (e) {
