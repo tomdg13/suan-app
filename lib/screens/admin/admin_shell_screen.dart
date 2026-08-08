@@ -12,6 +12,7 @@ import 'views/admin_orders_view.dart';
 import 'views/admin_withdrawals_view.dart';
 import 'views/admin_banners_view.dart';
 import 'views/admin_seller_tools_view.dart';
+import 'views/admin_payment_confirmations_view.dart';
 import 'admin_payment_qr_upload_screen.dart';
 
 // Below this width the permanent sidebar becomes a Drawer + bottom nav
@@ -19,7 +20,7 @@ import 'admin_payment_qr_upload_screen.dart';
 // the seller screens for consistency.
 const double _kMobileBreakpoint = 700;
 
-// Only these 4 sections get a spot on the bottom nav bar (9 items would be
+// Only these 4 sections get a spot on the bottom nav bar (9 itemswould be
 // too cramped/unreadable). Everything else stays reachable via "More",
 // which opens the same Drawer used for the full nav list.
 const List<int> _bottomNavIndices = [0, 4, 6, 7]; // Overview, Stores, All Orders, Withdrawals
@@ -57,9 +58,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     NavGroup(title: 'Finance', items: [
       NavItem(label: 'Withdrawals', icon: Icons.account_balance_wallet, index: 7),
       NavItem(label: 'Payment QR', icon: Icons.qr_code, index: 9),
+      NavItem(label: 'Payment Confirmations', icon: Icons.fact_check, index: 10),
     ]),
     // New: lets the admin operate a store the same way a seller does
-    // (Store Profile, Products, Orders) without leaving the admin panel.
+    // (Store Profile, Products, Orders) without leaving the adminpanel.
     NavGroup(title: 'Seller Tools', items: [
       NavItem(label: 'My Store', icon: Icons.storefront_outlined, index: 8),
     ]),
@@ -76,6 +78,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     AdminWithdrawalsView(),
     AdminSellerToolsView(),
     AdminPaymentQrUploadScreen(),
+    AdminPaymentConfirmationsView(),
   ];
 
   // Flat label lookup for the mobile AppBar title, keyed by the same
@@ -91,12 +94,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     'Withdrawals',
     'My Store',
     'Payment QR',
+    'Payment Confirmations',
   ];
 
   static const _bottomNavItems = [
     BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Overview'),
     BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'Stores'),
-    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
+    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label:'Orders'),
     BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Withdrawals'),
     BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'More'),
   ];
