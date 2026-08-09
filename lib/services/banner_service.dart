@@ -39,12 +39,19 @@ class BannerService {
     return BannerItem.fromJson(response);
   }
 
+  /// NOTE: title/subtitle/linkUrl are always sent here, even as empty
+  /// strings — NOT conditionally like createBanner(). This lets the
+  /// caller actually CLEAR a field on an existing banner. If we only
+  /// sent non-null values, emptying a field in the form and saving
+  /// would omit it from the request entirely, and the backend's
+  /// Object.assign(banner, dto) would leave the old value untouched —
+  /// the field would silently fail to clear.
   Future<BannerItem> updateBanner(
     int id, {
     Uint8List? imageBytes,
-    String? title,
-    String? subtitle,
-    String? linkUrl,
+    required String title,
+    required String subtitle,
+    required String linkUrl,
     bool? isActive,
   }) async {
     final response = await _multipartRequest(
@@ -52,9 +59,9 @@ class BannerService {
       path: '/banners/$id',
       imageBytes: imageBytes,
       fields: {
-        if (title != null) 'title': title,
-        if (subtitle != null) 'subtitle': subtitle,
-        if (linkUrl != null) 'linkUrl': linkUrl,
+        'title': title,
+        'subtitle': subtitle,
+        'linkUrl': linkUrl,
         if (isActive != null) 'isActive': isActive ? '1' : '0',
       },
     );
@@ -80,7 +87,6 @@ class BannerService {
   }) async {
     final token = await _api.getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
-
     final request = http.MultipartRequest(method, uri);
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
@@ -89,10 +95,8 @@ class BannerService {
         http.MultipartFile.fromBytes('file', imageBytes, filename: 'banner.jpg'),
       );
     }
-
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     }

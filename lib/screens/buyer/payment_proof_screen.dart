@@ -268,6 +268,7 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _rrnController,
+                onChanged: (_) => setState(() {}), // keep the submit button's enabled state in sync
                 decoration: InputDecoration(
                   hintText: 'e.g. FQR26218PM7O1316',
                   isDense: true,
@@ -296,9 +297,11 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
-                  onPressed: _submitting ? null : _submit,
+                  onPressed: (_submitting || _scanning || _rrnController.text.trim().isEmpty)
+                      ? null
+                      : _submit,
                   child: Text(
-                    _submitting ? 'Submitting...' : 'Submit Payment Confirmation',
+                    _scanning ? 'Scanning...' : (_submitting ? 'Submitting...' : 'Submit Payment Confirmation'),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),

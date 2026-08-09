@@ -36,7 +36,13 @@ class _AdminBannersViewState extends State<AdminBannersView> {
   }
 
   Future<void> _toggleActive(BannerItem banner) async {
-    await _bannerService.updateBanner(banner.id, isActive: !banner.isActive);
+    await _bannerService.updateBanner(
+      banner.id,
+      title: banner.title ?? '',
+      subtitle: banner.subtitle ?? '',
+      linkUrl: banner.linkUrl ?? '',
+      isActive: !banner.isActive,
+    );
     _load();
   }
 
@@ -99,6 +105,8 @@ class _AdminBannersViewState extends State<AdminBannersView> {
           const SizedBox(height: 16),
           if (_banners.isEmpty) const Text('No banners yet — add one to replace the default placeholder.'),
           ..._banners.map((banner) {
+            final hasTitle = banner.title != null && banner.title!.trim().isNotEmpty;
+            final hasSubtitle = banner.subtitle != null && banner.subtitle!.trim().isNotEmpty;
             return Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -116,9 +124,9 @@ class _AdminBannersViewState extends State<AdminBannersView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(banner.title ?? '(no title)',
+                          Text(hasTitle ? banner.title! : '(no title)',
                               style: const TextStyle(fontWeight: FontWeight.bold)),
-                          if (banner.subtitle != null)
+                          if (hasSubtitle)
                             Text(banner.subtitle!,
                                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                         ],
@@ -205,11 +213,14 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
     });
     try {
       if (_isEditMode) {
+        // Always send title/subtitle/linkUrl (even empty) — see the
+        // comment on BannerService.updateBanner for why this matters:
+        // omitting an empty field would silently fail to clear it.
         await _bannerService.updateBanner(
           widget.existing!.id,
-          title: _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
-          subtitle: _subtitleCtrl.text.trim().isEmpty ? null : _subtitleCtrl.text.trim(),
-          linkUrl: _linkCtrl.text.trim().isEmpty ? null : _linkCtrl.text.trim(),
+          title: _titleCtrl.text.trim(),
+          subtitle: _subtitleCtrl.text.trim(),
+          linkUrl: _linkCtrl.text.trim(),
           imageBytes: _pickedImage,
         );
       } else {
