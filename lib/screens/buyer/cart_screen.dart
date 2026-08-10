@@ -17,6 +17,7 @@ class _CartScreenState extends State<CartScreen> {
   List<CartGroup> _groups = [];
   bool _loading = true;
   bool _checkingOut = false;
+  bool _removingSelected = false;
 
   // Selected cart-item ids (by CartItem.id, not productId). Defaults to
   // "everything selected" whenever the cart reloads, matching the usual
@@ -92,6 +93,42 @@ class _CartScreenState extends State<CartScreen> {
 
   bool get _hasSelection => _selectedIds.isNotEmpty;
 
+  Future<void> _removeSelected() async {
+    if (_selectedIds.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('ລຶບອອກ?'), // Remove?
+        content: Text('ລຶບ ${_selectedIds.length} ລາຍການທີ່ເລືອກອອກຈາກກະຕ່າ?'), // Remove N selected items from cart?
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('ຍົກເລີກ')), // Cancel
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(AppColors.errorValue)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('ລຶບ'), // Remove
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _removingSelected = true);
+    try {
+      for (final id in _selectedIds.toList()) {
+        await _cartService.removeItem(id);
+      }
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ເກີດຂໍ້ຜິດພາດ: $e')), // Error occurred
+      );
+    } finally {
+      if (mounted) setState(() => _removingSelected = false);
+    }
+  }
+
   Future<void> _proceedToCheckout() async {
     if (!_hasSelection) return;
 
@@ -149,7 +186,23 @@ class _CartScreenState extends State<CartScreen> {
 
     return Scaffold(
       backgroundColor: const Color(AppColors.backgroundValue),
-      appBar: AppBar(title: const Text('ກະຕ່າ')), // Cart
+      appBar: AppBar(
+        title: const Text('ກະຕ່າ'), // Cart
+        actions: [
+          if (_hasSelection)
+            IconButton(
+              icon: _removingSelected
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.delete_outline),
+              tooltip: 'ລຶບລາຍການທີ່ເລືອກ', // Remove selected items
+              onPressed: _removingSelected ? null : _removeSelected,
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _groups.isEmpty

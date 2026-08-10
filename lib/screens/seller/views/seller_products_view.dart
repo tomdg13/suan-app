@@ -31,6 +31,11 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   List<Product> _products = [];
   bool _loading = true;
 
+  // Product ids currently mid-save from a quick +/- stock tap, so the
+  // buttons can disable/spin just for that one row instead of the whole
+  // screen.
+  final Set<int> _adjustingStock = {};
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +70,19 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   Future<void> _toggleVisibility(Product product) async {
     await _productService.updateProduct(product.id, isActive: !product.isActive);
     _load();
+  }
+
+  // Quick stock +/- straight from the product card — no need to open the
+  // full edit form just to bump inventory up or down.
+  Future<void> _adjustStock(Product product, double delta) async {
+    final newStock = (product.stockQty + delta).clamp(0, double.infinity).toDouble();
+    setState(() => _adjustingStock.add(product.id));
+    try {
+      await _productService.updateProduct(product.id, stockQty: newStock);
+      await _load();
+    } finally {
+      if (mounted) setState(() => _adjustingStock.remove(product.id));
+    }
   }
 
   void _openAddProductSheet() {
@@ -129,12 +147,107 @@ class _SellerProductsViewState extends State<SellerProductsView> {
             children: [
               _buildHeader(isMobile),
               const SizedBox(height: 16),
+              if (_products.isNotEmpty) ...[
+                _buildStockSummaryTable(),
+                const SizedBox(height: 20),
+              ],
               if (_products.isEmpty) const Text('No products yet.'),
               ..._products.map((p) => _buildProductCard(p, priceFormat, isMobile)),
             ],
           ),
         );
       },
+    );
+  }
+
+  // ---- Stock summary table: every product's remaining stock at a
+  // glance, plus a total row at the bottom (ຕາຕະລາງສັງລວມ). ----
+  Widget _buildStockSummaryTable() {
+    final totalStock = _products.fold<double>(0, (sum, p) => sum + p.stockQty);
+    final lowStockCount = _products.where((p) => p.stockQty > 0 && p.stockQty <= 5).length;
+    final outOfStockCount = _products.where((p) => p.stockQty <= 0).length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(AppColors.borderValue)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            child: Row(
+              children: [
+                const Text('ສະຫຼຸບຄັງສິນຄ້າ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // Stock summary
+                const Spacer(),
+                if (lowStockCount > 0) ...[
+                  _buildBadge('$lowStockCount ໃກ້ໝົດ', const Color(AppColors.warningValue)), // low stock
+                  const SizedBox(width: 6),
+                ],
+                if (outOfStockCount > 0)
+                  _buildBadge('$outOfStockCount ໝົດ', const Color(AppColors.errorValue)), // out of stock
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: SingleChildScrollView(
+              child: DataTable(
+                columnSpacing: 20,
+                headingRowHeight: 36,
+                dataRowMinHeight: 36,
+                dataRowMaxHeight: 40,
+                columns: const [
+                  DataColumn(label: Text('ສິນຄ້າ', style: TextStyle(fontSize: 12))), // Product
+                  DataColumn(label: Text('ຄົງເຫຼືອ', style: TextStyle(fontSize: 12)), numeric: true), // Remaining
+                ],
+                rows: _products.map((p) {
+                  final isLow = p.stockQty > 0 && p.stockQty <= 5;
+                  final isOut = p.stockQty <= 0;
+                  return DataRow(cells: [
+                    DataCell(Text(p.nameLao, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                    DataCell(Text(
+                      p.stockQty.toStringAsFixed(0),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isOut
+                            ? const Color(AppColors.errorValue)
+                            : (isLow ? const Color(AppColors.warningValue) : const Color(AppColors.textDarkValue)),
+                      ),
+                    )),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            child: Row(
+              children: [
+                const Text('ລວມທັງໝົດ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)), // Grand total
+                const Spacer(),
+                Text(
+                  totalStock.toStringAsFixed(0),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(AppColors.primaryValue)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
@@ -173,6 +286,43 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     );
   }
 
+  // Quick +/- stock adjuster — tapping either button saves immediately
+  // (no separate "save" step), matching how the qty stepper works
+  // elsewhere in the app.
+  Widget _buildStockAdjuster(Product p) {
+    final busy = _adjustingStock.contains(p.id);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _stockButton(Icons.remove, busy || p.stockQty <= 0 ? null : () => _adjustStock(p, -1)),
+        Container(
+          width: 40,
+          alignment: Alignment.center,
+          child: busy
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(p.stockQty.toStringAsFixed(0), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ),
+        _stockButton(Icons.add, busy ? null : () => _adjustStock(p, 1)),
+      ],
+    );
+  }
+
+  Widget _stockButton(IconData icon, VoidCallback? onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(AppColors.borderValue)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon, size: 14, color: onTap == null ? Colors.grey.shade400 : Colors.black87),
+      ),
+    );
+  }
+
   // ---- Product card: ListTile layout on wide screens (unchanged),
   // custom stacked layout on mobile so the subtitle line and action
   // icons both get enough room instead of being squeezed into one
@@ -208,23 +358,25 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ],
     );
 
-    final stockLine = Text(
-      'Stock: ${p.stockQty.toStringAsFixed(0)} · ${p.imageUrls.length} photo(s)',
+    final photoCountLine = Text(
+      '${p.imageUrls.length} photo(s)',
       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
     );
 
     if (!isMobile) {
-      // Unchanged desktop/web layout.
+      // Unchanged desktop/web layout, with the stock adjuster added.
       return Opacity(
         opacity: p.isActive ? 1.0 : 0.55,
         child: Card(
           child: ListTile(
             leading: thumb,
             title: nameRow,
-            subtitle: stockLine,
+            subtitle: photoCountLine,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _buildStockAdjuster(p),
+                const SizedBox(width: 14),
                 Text('${priceFormat.format(p.basePrice)} ກີບ'),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
@@ -247,8 +399,8 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       );
     }
 
-    // ---- Mobile layout: image + name/stock on one row (full width to
-    // breathe), price + action icons on a second row below. ----
+    // ---- Mobile layout: image + name/photos on one row, stock
+    // adjuster on its own row, price + action icons on the last row. ----
     return Opacity(
       opacity: p.isActive ? 1.0 : 0.55,
       child: Card(
@@ -268,10 +420,18 @@ class _SellerProductsViewState extends State<SellerProductsView> {
                       children: [
                         nameRow,
                         const SizedBox(height: 4),
-                        stockLine,
+                        photoCountLine,
                       ],
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Text('Stock', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  const Spacer(),
+                  _buildStockAdjuster(p),
                 ],
               ),
               const SizedBox(height: 10),
