@@ -92,6 +92,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       final results = await Future.wait([
         _catalogService.getCategories(),
         _productService.getProducts(
+          limit: 100,
           categoryId: _selectedCategoryId,
           search: isSearching ? searchText : null,
         ),

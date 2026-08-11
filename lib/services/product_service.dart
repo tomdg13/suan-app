@@ -10,12 +10,14 @@ class ProductService {
     int? storeId,
     String? search,
     bool includeHidden = false,
+    int? limit,
   }) async {
     final params = <String>[];
     if (categoryId != null) params.add('categoryId=$categoryId');
     if (storeId != null) params.add('storeId=$storeId');
     if (search != null && search.isNotEmpty) params.add('search=${Uri.encodeComponent(search)}');
     if (includeHidden) params.add('includeHidden=true');
+    if (limit != null) params.add('limit=$limit');
     final query = params.isNotEmpty ? '?${params.join('&')}' : '';
 
     final json = await _api.get('/products$query', auth: includeHidden);
