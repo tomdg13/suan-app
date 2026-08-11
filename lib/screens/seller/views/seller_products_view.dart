@@ -31,11 +31,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   List<Product> _products = [];
   bool _loading = true;
 
-  // Product ids currently mid-save from a quick +/- stock tap, so the
-  // buttons can disable/spin just for that one row instead of the whole
-  // screen.
-  final Set<int> _adjustingStock = {};
-
   @override
   void initState() {
     super.initState();
@@ -73,18 +68,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   }
 
   // Quick stock +/- straight from the product card — no need to open the
-  // full edit form just to bump inventory up or down.
-  Future<void> _adjustStock(Product product, double delta) async {
-    final newStock = (product.stockQty + delta).clamp(0, double.infinity).toDouble();
-    setState(() => _adjustingStock.add(product.id));
-    try {
-      await _productService.updateProduct(product.id, stockQty: newStock);
-      await _load();
-    } finally {
-      if (mounted) setState(() => _adjustingStock.remove(product.id));
-    }
-  }
-
   void _openAddProductSheet() {
     showModalBottomSheet(
       context: context,
@@ -191,43 +174,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     );
   }
 
-  // Quick +/- stock adjuster — tapping either button saves immediately
-  // (no separate "save" step), matching how the qty stepper works
-  // elsewhere in the app.
-  Widget _buildStockAdjuster(Product p) {
-    final busy = _adjustingStock.contains(p.id);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _stockButton(Icons.remove, busy || p.stockQty <= 0 ? null : () => _adjustStock(p, -1)),
-        Container(
-          width: 40,
-          alignment: Alignment.center,
-          child: busy
-              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(p.stockQty.toStringAsFixed(0), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        ),
-        _stockButton(Icons.add, busy ? null : () => _adjustStock(p, 1)),
-      ],
-    );
-  }
-
-  Widget _stockButton(IconData icon, VoidCallback? onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(AppColors.borderValue)),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(icon, size: 14, color: onTap == null ? Colors.grey.shade400 : Colors.black87),
-      ),
-    );
-  }
-
   // ---- Product card: ListTile layout on wide screens (unchanged),
   // custom stacked layout on mobile so the subtitle line and action
   // icons both get enough room instead of being squeezed into one
@@ -280,8 +226,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildStockAdjuster(p),
-                const SizedBox(width: 14),
                 Text('${priceFormat.format(p.basePrice)} ກີບ'),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
@@ -329,14 +273,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Text('Stock', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                  const Spacer(),
-                  _buildStockAdjuster(p),
                 ],
               ),
               const SizedBox(height: 10),

@@ -50,6 +50,34 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
     return '${ApiConfig.mediaBaseUrl}$path';
   }
 
+  // Prompts for how much to add/remove instead of always ±1 — useful
+  // for restocking a batch (e.g. "+50" after a delivery) or removing a
+  // spoiled batch in one go.
+  Future<void> _promptAdjust(Product p, bool isIncrease) async {
+    final ctrl = TextEditingController(text: '1');
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(isIncrease ? 'ເພີ່ມຈຳນວນ' : 'ເອົາອອກຈຳນວນ'), // Add amount / Remove amount
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'ຈຳນວນ', border: OutlineInputBorder()), // Amount
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('ຍົກເລີກ')), // Cancel
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(double.tryParse(ctrl.text.trim())),
+            child: Text(isIncrease ? 'ເພີ່ມ' : 'ເອົາອອກ'), // Add / Remove
+          ),
+        ],
+      ),
+    );
+    if (amount == null || amount <= 0) return;
+    await _adjustStock(p, isIncrease ? amount : -amount);
+  }
+
   Future<void> _adjustStock(Product p, double delta) async {
     final newStock = (p.stockQty + delta).clamp(0, double.infinity).toDouble();
     setState(() => _adjusting.add(p.id));
@@ -282,7 +310,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
           // ---- Action row: -1 / editable qty / +1 / delete ----
           Row(
             children: [
-              _adjustButton(Icons.remove, busy || p.stockQty <= 0 ? null : () => _adjustStock(p, -1)),
+              _adjustButton(Icons.remove, busy || p.stockQty <= 0 ? null : () => _promptAdjust(p, false)),
               Expanded(
                 child: InkWell(
                   onTap: busy ? null : () => _showQuantityDialog(p),
@@ -304,7 +332,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
                   ),
                 ),
               ),
-              _adjustButton(Icons.add, busy ? null : () => _adjustStock(p, 1)),
+              _adjustButton(Icons.add, busy ? null : () => _promptAdjust(p, true)),
               const SizedBox(width: 8),
               IconButton(
                 icon: _deleting.contains(p.id)
