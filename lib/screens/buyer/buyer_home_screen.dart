@@ -106,7 +106,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       // then shuffle so the grid looks different on every visit/refresh.
       if (!isSearching) {
         allProducts = allProducts
-            .where((p) => p.isActive && p.stockQty > 0)
+            .where((p) => p.isActive)
             .toList()
           ..shuffle(Random());
       }
