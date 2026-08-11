@@ -382,8 +382,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   late final _descCtrl = TextEditingController(text: widget.existingProduct?.description ?? '');
   late final _priceCtrl = TextEditingController(
       text: widget.existingProduct != null ? widget.existingProduct!.basePrice.toStringAsFixed(0) : '');
-  late final _stockCtrl = TextEditingController(
-      text: widget.existingProduct != null ? widget.existingProduct!.stockQty.toStringAsFixed(0) : '0');
+
 
   List<ProductCategory> _categories = [];
   List<ProductUnit> _units = [];
@@ -445,6 +444,10 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     try {
       Product product;
       if (_isEditMode) {
+        // Stock is NOT edited here anymore — it's managed exclusively
+        // on the Stock Summary page, where every change gets logged to
+        // the stock history. Omitting stockQty means updateProduct()
+        // won't touch it.
         product = await _productService.updateProduct(
           widget.existingProduct!.id,
           categoryId: _selectedCategoryId,
@@ -452,9 +455,10 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
-          stockQty: double.tryParse(_stockCtrl.text.trim()) ?? 0,
         );
       } else {
+        // New products start at 0 stock — add stock via the Stock
+        // Summary page once created.
         product = await _productService.createProduct(
           storeId: widget.storeId,
           categoryId: _selectedCategoryId!,
@@ -462,7 +466,6 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
-          stockQty: double.tryParse(_stockCtrl.text.trim()) ?? 0,
         );
       }
 
@@ -556,13 +559,6 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _stockCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                        labelText: 'Stock quantity', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 16),
                   Align(
