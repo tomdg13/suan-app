@@ -147,107 +147,12 @@ class _SellerProductsViewState extends State<SellerProductsView> {
             children: [
               _buildHeader(isMobile),
               const SizedBox(height: 16),
-              if (_products.isNotEmpty) ...[
-                _buildStockSummaryTable(),
-                const SizedBox(height: 20),
-              ],
               if (_products.isEmpty) const Text('No products yet.'),
               ..._products.map((p) => _buildProductCard(p, priceFormat, isMobile)),
             ],
           ),
         );
       },
-    );
-  }
-
-  // ---- Stock summary table: every product's remaining stock at a
-  // glance, plus a total row at the bottom (ຕາຕະລາງສັງລວມ). ----
-  Widget _buildStockSummaryTable() {
-    final totalStock = _products.fold<double>(0, (sum, p) => sum + p.stockQty);
-    final lowStockCount = _products.where((p) => p.stockQty > 0 && p.stockQty <= 5).length;
-    final outOfStockCount = _products.where((p) => p.stockQty <= 0).length;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(AppColors.borderValue)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: Row(
-              children: [
-                const Text('ສະຫຼຸບຄັງສິນຄ້າ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // Stock summary
-                const Spacer(),
-                if (lowStockCount > 0) ...[
-                  _buildBadge('$lowStockCount ໃກ້ໝົດ', const Color(AppColors.warningValue)), // low stock
-                  const SizedBox(width: 6),
-                ],
-                if (outOfStockCount > 0)
-                  _buildBadge('$outOfStockCount ໝົດ', const Color(AppColors.errorValue)), // out of stock
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 260),
-            child: SingleChildScrollView(
-              child: DataTable(
-                columnSpacing: 20,
-                headingRowHeight: 36,
-                dataRowMinHeight: 36,
-                dataRowMaxHeight: 40,
-                columns: const [
-                  DataColumn(label: Text('ສິນຄ້າ', style: TextStyle(fontSize: 12))), // Product
-                  DataColumn(label: Text('ຄົງເຫຼືອ', style: TextStyle(fontSize: 12)), numeric: true), // Remaining
-                ],
-                rows: _products.map((p) {
-                  final isLow = p.stockQty > 0 && p.stockQty <= 5;
-                  final isOut = p.stockQty <= 0;
-                  return DataRow(cells: [
-                    DataCell(Text(p.nameLao, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                    DataCell(Text(
-                      p.stockQty.toStringAsFixed(0),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isOut
-                            ? const Color(AppColors.errorValue)
-                            : (isLow ? const Color(AppColors.warningValue) : const Color(AppColors.textDarkValue)),
-                      ),
-                    )),
-                  ]);
-                }).toList(),
-              ),
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-            child: Row(
-              children: [
-                const Text('ລວມທັງໝົດ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)), // Grand total
-                const Spacer(),
-                Text(
-                  totalStock.toStringAsFixed(0),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(AppColors.primaryValue)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 

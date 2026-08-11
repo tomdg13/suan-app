@@ -8,6 +8,7 @@ import '../buyer/buyer_home_screen.dart';
 import 'views/seller_store_profile_view.dart';
 import 'views/seller_products_view.dart';
 import 'views/seller_orders_view.dart';
+import 'views/seller_stock_summary_screen.dart';
 
 // Below this width, the permanent sidebar becomes a Drawer (hamburger menu)
 // instead of squeezing the content panel. Matches the breakpoint used on
@@ -32,17 +33,20 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
     ]),
     NavGroup(title: 'Management', items: [
       NavItem(label: 'Products', icon: Icons.inventory_2, index: 1),
+      NavItem(label: 'Stock Summary', icon: Icons.bar_chart, index: 3),
       NavItem(label: 'Orders', icon: Icons.receipt_long, index: 2),
     ]),
   ];
 
-  // Labels for the bottom nav bar (mobile only) — mirrors the flat index
-  // order used by `views` below (0 = Store Profile, 1 = Products, 2 = Orders).
+  // Labels for the bottom nav bar (mobile only). Stock Summary isn't
+  // pinned here (4 items is already the practical max before it feels
+  // cramped) — it's still reachable via the Drawer.
   static const _bottomNavItems = [
     BottomNavigationBarItem(icon: Icon(Icons.badge), label: 'Store'),
     BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Products'),
     BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
   ];
+  static const _bottomNavIndices = [0, 1, 2]; // maps bottom-bar position -> _selected index
 
   @override
   void initState() {
@@ -80,6 +84,9 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       ),
       SellerProductsView(store: _selectedStore),
       SellerOrdersView(store: _selectedStore),
+      _selectedStore != null
+          ? SellerStockSummaryScreen(store: _selectedStore!)
+          : const Center(child: Text('Select or create a store first.')),
     ];
 
     final content = _loadingStore
@@ -96,6 +103,10 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
         if (isMobile) {
           // ---- MOBILE: sidebar moves into a Drawer, content gets full width,
           // and a bottom nav bar gives quick access without opening the drawer.
+          final bottomNavPosition = _bottomNavIndices.contains(_selected)
+              ? _bottomNavIndices.indexOf(_selected)
+              : 0;
+
           return Scaffold(
             appBar: AppBar(
               title: Text(_selectedStore?.storeName ?? 'Seller Panel'),
@@ -117,8 +128,8 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
             ),
             body: content,
             bottomNavigationBar: BottomNavigationBar(
-              currentIndex: _selected,
-              onTap: (i) => setState(() => _selected = i),
+              currentIndex: bottomNavPosition,
+              onTap: (i) => setState(() => _selected = _bottomNavIndices[i]),
               items: _bottomNavItems,
               type: BottomNavigationBarType.fixed,
             ),

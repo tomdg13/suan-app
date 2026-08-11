@@ -1,4 +1,5 @@
 import '../models/product.dart';
+import '../models/product_stock_log.dart';
 import 'api_client.dart';
 
 class ProductService {
@@ -73,5 +74,19 @@ class ProductService {
       if (isActive != null) 'isActive': isActive ? 1 : 0,
     }, auth: true);
     return Product.fromJson(json);
+  }
+
+  /// Stock movement history for a product — newest first. Matches
+  /// GET /products/:id/stock-history.
+  Future<List<ProductStockLogEntry>> getStockHistory(int productId) async {
+    final json = await _api.get('/products/$productId/stock-history', auth: true);
+    return (json as List).map((e) => ProductStockLogEntry.fromJson(e)).toList();
+  }
+
+  /// Deletes a product permanently. Backend blocks this (400) if the
+  /// product has past orders referencing it — hide it via updateProduct
+  /// (isActive: false) instead in that case.
+  Future<void> deleteProduct(int id) async {
+    await _api.delete('/products/$id', auth: true);
   }
 }
