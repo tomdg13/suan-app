@@ -4,6 +4,7 @@ import '../../config/constants.dart';
 import '../../models/product.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
+import '../../services/fee_config_service.dart';
 import '../../utils/auth_guard.dart';
 import 'store_page_screen.dart';
 import 'fullscreen_gallery_screen.dart';
@@ -39,6 +40,7 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final _productService = ProductService();
   final _cartService = CartService();
+  final _feeConfigService = FeeConfigService();
   final _galleryController = PageController();
 
   Product? _product;
@@ -113,10 +115,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       if (!mounted) return;
       final price = _selectedVariant?.price ?? _product!.basePrice;
-      // Backend adds a flat 20,000 ກີບ delivery fee per store at checkout
-      // (DEFAULT_DELIVERY_FEE in orders.service.ts) — include it here so
-      // the amount shown matches what checkout will actually charge.
-      final total = (price * _qty) + 20000;
+      final subtotal = price * _qty;
+      // Fees (delivery, insurance %, etc.) are admin-configured in
+      // /fees rather than hardcoded, so fetch the active list and
+      // compute them the same way orders.service.ts does at checkout.
+      double total = subtotal;
+      try {
+        final activeFees = await _feeConfigService.fetchActive();
+        final lines = _feeConfigService.computeFeeLines(activeFees, subtotal);
+        total = subtotal + _feeConfigService.sumFeeLines(lines);
+      } catch (_) {
+        // Fee lookup failed - fall back to bare subtotal rather than
+        // blocking the buy flow; checkout still applies real fees.
+      }
+      if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BuyerPaymentScreen(

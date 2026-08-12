@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../config/constants.dart';
 import '../../models/cart_item.dart';
 import '../../services/cart_service.dart';
+import '../../services/fee_config_service.dart';
 import 'buyer_payment_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -14,7 +15,9 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final _cartService = CartService();
+  final _feeConfigService = FeeConfigService();
   List<CartGroup> _groups = [];
+  List<FeeConfig> _activeFees = [];
   bool _loading = true;
   bool _checkingOut = false;
   bool _removingSelected = false;
@@ -33,8 +36,15 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final groups = await _cartService.getCart();
+    List<FeeConfig> activeFees = [];
+    try {
+      activeFees = await _feeConfigService.fetchActive();
+    } catch (_) {
+      // Fee lookup failing shouldn't block viewing the cart.
+    }
     setState(() {
       _groups = groups;
+      _activeFees = activeFees;
       _selectedIds
         ..clear()
         ..addAll(groups.expand((g) => g.items).map((i) => i.id));
@@ -85,11 +95,28 @@ class _CartScreenState extends State<CartScreen> {
   int get _selectedStoreCount =>
       _groups.where((g) => g.items.any((i) => _selectedIds.contains(i.id))).length;
 
-  // Backend charges a flat 20,000 ກີບ delivery fee PER STORE in the
-  // cart (DEFAULT_DELIVERY_FEE in orders.service.ts) — reflect that here
-  // so what's shown matches what checkout will actually charge.
-  double get _estimatedDeliveryFee => _selectedStoreCount * 20000;
-  double get _grandTotal => _itemsTotal + _estimatedDeliveryFee;
+  // Fees (delivery, insurance %, etc.) are admin-configured in /fees and
+  // applied PER STORE against that store's own subtotal.
+  double _selectedSubtotalForGroup(CartGroup group) {
+    double total = 0;
+    for (final item in group.items) {
+      if (_selectedIds.contains(item.id)) total += item.subtotal;
+    }
+    return total;
+  }
+
+  double get _estimatedFeesTotal {
+    double total = 0;
+    for (final group in _groups) {
+      final subtotal = _selectedSubtotalForGroup(group);
+      if (subtotal <= 0) continue;
+      final lines = _feeConfigService.computeFeeLines(_activeFees, subtotal);
+      total += _feeConfigService.sumFeeLines(lines);
+    }
+    return total;
+  }
+
+  double get _grandTotal => _itemsTotal + _estimatedFeesTotal;
 
   bool get _hasSelection => _selectedIds.isNotEmpty;
 
@@ -228,7 +255,7 @@ class _CartScreenState extends State<CartScreen> {
                         child: Row(
                           children: [
                             Text(
-                              'ຄ່າຈັດສົ່ງ ($_selectedStoreCount ຮ້ານ): ${priceFormat.format(_estimatedDeliveryFee)} ກີບ', // Delivery fee (N stores)
+                              'ຄ່າທຳນຽມ ($_selectedStoreCount ຮ້ານ): ${priceFormat.format(_estimatedFeesTotal)} ກີບ', // Fees (N stores)
                               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
