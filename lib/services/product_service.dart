@@ -2,8 +2,42 @@ import '../models/product.dart';
 import '../models/product_stock_log.dart';
 import 'api_client.dart';
 
+class ProductPage {
+  final List<Product> items;
+  final int total;
+  final int page;
+  final int limit;
+  ProductPage({required this.items, required this.total, required this.page, required this.limit});
+}
+
 class ProductService {
   final ApiClient _api = ApiClient();
+
+  Future<ProductPage> getProductsPaged({
+    int? categoryId,
+    int? storeId,
+    String? search,
+    bool includeHidden = false,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final params = <String>[];
+    if (categoryId != null) params.add('categoryId=$categoryId');
+    if (storeId != null) params.add('storeId=$storeId');
+    if (search != null && search.isNotEmpty) params.add('search=${Uri.encodeComponent(search)}');
+    if (includeHidden) params.add('includeHidden=true');
+    params.add('page=$page');
+    params.add('limit=$limit');
+    final query = '?${params.join('&')}';
+    final json = await _api.get('/products$query', auth: includeHidden);
+    final items = (json['items'] as List<dynamic>? ?? []).map((e) => Product.fromJson(e)).toList();
+    return ProductPage(
+      items: items,
+      total: json['total'] as int? ?? items.length,
+      page: json['page'] as int? ?? page,
+      limit: json['limit'] as int? ?? limit,
+    );
+  }
 
   Future<List<Product>> getProducts({
     int? categoryId,
@@ -19,7 +53,6 @@ class ProductService {
     if (includeHidden) params.add('includeHidden=true');
     if (limit != null) params.add('limit=$limit');
     final query = params.isNotEmpty ? '?${params.join('&')}' : '';
-
     final json = await _api.get('/products$query', auth: includeHidden);
     final items = json['items'] as List<dynamic>? ?? [];
     return items.map((e) => Product.fromJson(e)).toList();

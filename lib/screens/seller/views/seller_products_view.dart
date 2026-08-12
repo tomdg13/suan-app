@@ -31,6 +31,11 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   List<Product> _products = [];
   bool _loading = true;
 
+  int _page = 1;
+  int _limit = 10;
+  int _total = 0;
+  final _goToCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +45,10 @@ class _SellerProductsViewState extends State<SellerProductsView> {
   @override
   void didUpdateWidget(covariant SellerProductsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.store?.id != widget.store?.id) _load();
+    if (oldWidget.store?.id != widget.store?.id) {
+      _page = 1;
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -52,14 +60,32 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     // includeHidden: true — this is the seller's own management view,
     // so hidden products must still show up (with a "Hidden" badge)
     // or there'd be no way to find and un-hide them again.
-    final products = await _productService.getProducts(
+    final result = await _productService.getProductsPaged(
       storeId: widget.store!.id,
       includeHidden: true,
+      page: _page,
+      limit: _limit,
     );
     setState(() {
-      _products = products;
+      _products = result.items;
+      _total = result.total;
       _loading = false;
     });
+  }
+
+  void _goToPage(int page) {
+    final maxPage = _total == 0 ? 1 : (_total / _limit).ceil();
+    if (page < 1 || page > maxPage) return;
+    setState(() => _page = page);
+    _load();
+  }
+
+  void _changeLimit(int newLimit) {
+    setState(() {
+      _limit = newLimit;
+      _page = 1;
+    });
+    _load();
   }
 
   Future<void> _toggleVisibility(Product product) async {
@@ -132,6 +158,7 @@ class _SellerProductsViewState extends State<SellerProductsView> {
               const SizedBox(height: 16),
               if (_products.isEmpty) const Text('No products yet.'),
               ..._products.map((p) => _buildProductCard(p, priceFormat, isMobile)),
+              if (_total > 0) _buildPaginationBar(),
             ],
           ),
         );
@@ -171,6 +198,71 @@ class _SellerProductsViewState extends State<SellerProductsView> {
         const SizedBox(width: 12),
         addButton,
       ],
+    );
+  }
+
+  // ---- Pagination bar: Total count, prev/next, page numbers with
+  // truncation, N/page selector, and a "Go to" field. ----
+  Widget _buildPaginationBar() {
+    final maxPage = _total == 0 ? 1 : (_total / _limit).ceil();
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          Text('Total: $_total'),
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _page > 1 ? () => _goToPage(_page - 1) : null,
+          ),
+          for (int i = 1; i <= maxPage; i++)
+            if (i == 1 || i == maxPage || (i - _page).abs() <= 1)
+              OutlinedButton(
+                onPressed: () => _goToPage(i),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: i == _page ? Theme.of(context).colorScheme.primary : null,
+                  foregroundColor: i == _page ? Colors.white : null,
+                  minimumSize: const Size(36, 36),
+                  padding: EdgeInsets.zero,
+                ),
+                child: Text('$i'),
+              )
+            else if (i == _page - 2 || i == _page + 2)
+              const Text('...'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _page < maxPage ? () => _goToPage(_page + 1) : null,
+          ),
+          DropdownButton<int>(
+            value: _limit,
+            items: const [10, 20, 50, 100]
+                .map((n) => DropdownMenuItem(value: n, child: Text('$n / page')))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) _changeLimit(v);
+            },
+          ),
+          SizedBox(
+            width: 70,
+            child: TextField(
+              controller: _goToCtrl,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: OutlineInputBorder(),
+                hintText: 'Go to',
+              ),
+              keyboardType: TextInputType.number,
+              onSubmitted: (v) {
+                final p = int.tryParse(v);
+                if (p != null) _goToPage(p);
+                _goToCtrl.clear();
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
