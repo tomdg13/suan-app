@@ -42,4 +42,43 @@ class AddressService {
     );
     return UserAddress.fromJson(json);
   }
+
+  Future<UserAddress> update(
+    int id, {
+    String? label,
+    String? recipientName,
+    String? phone,
+    String? addressLine,
+    String? village,
+    String? district,
+    String? province,
+    double? latitude,
+    double? longitude,
+    bool? isDefault,
+  }) async {
+    final json = await _api.patch(
+      '/user-addresses/$id',
+      {
+        if (label != null) 'label': label,
+        if (recipientName != null) 'recipientName': recipientName,
+        if (phone != null) 'phone': phone,
+        if (addressLine != null) 'addressLine': addressLine,
+        if (village != null) 'village': village,
+        if (district != null) 'district': district,
+        if (province != null) 'province': province,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (isDefault != null) 'isDefault': isDefault ? 1 : 0,
+      },
+      auth: true,
+    );
+    return UserAddress.fromJson(json);
+  }
+
+  /// Convenience call for the "set as default" tap in the address list.
+  Future<UserAddress> setDefault(int id) => update(id, isDefault: true);
+
+  Future<void> remove(int id) async {
+    await _api.delete('/user-addresses/$id', auth: true);
+  }
 }

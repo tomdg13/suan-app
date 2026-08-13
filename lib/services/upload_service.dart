@@ -9,6 +9,17 @@ import 'api_client.dart';
 class UploadService {
   final ApiClient _api = ApiClient();
 
+  /// Uploads the current user's profile photo and returns the new avatarUrl.
+  Future<String> uploadMyAvatar(Uint8List bytes) async {
+    final response = await _multipartUpload(
+      path: '/users/me/avatar',
+      filesBytes: [bytes],
+      fieldName: 'file',
+      baseFilename: 'avatar',
+    );
+    return response['avatarUrl'] as String;
+  }
+
   /// Uploads a store's logo or cover image from raw bytes (post-crop,
   /// post-compression) and returns the updated Store.
   Future<Store> uploadStoreImageBytes({

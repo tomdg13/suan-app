@@ -58,6 +58,14 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates the logged-in user's avatar locally after a successful
+  /// upload, without needing a full server round-trip.
+  void updateAvatarUrl(String avatarUrl) {
+    if (currentUser == null) return;
+    currentUser = currentUser!.copyWith(avatarUrl: avatarUrl);
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     currentUser = null;
