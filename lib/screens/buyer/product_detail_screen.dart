@@ -120,10 +120,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       // /fees rather than hardcoded, so fetch the active list and
       // compute them the same way orders.service.ts does at checkout.
       double total = subtotal;
+      List<({String name, double amount})> feeLines = [];
       try {
         final activeFees = await _feeConfigService.fetchActive();
         final lines = _feeConfigService.computeFeeLines(activeFees, subtotal);
         total = subtotal + _feeConfigService.sumFeeLines(lines);
+        feeLines = lines.map((l) => (name: l.name, amount: l.amount)).toList();
       } catch (_) {
         // Fee lookup failed - fall back to bare subtotal rather than
         // blocking the buy flow; checkout still applies real fees.
@@ -136,11 +138,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             items: [
               (
                 name: '${_product!.nameLao}'
-                    '${_selectedVariant != null ? ' (${_selectedVariant!.variantLabel})' : ''}'
-                    ' x${_qty == _qty.roundToDouble() ? _qty.toInt() : _qty}',
+                    '${_selectedVariant != null ? ' (${_selectedVariant!.variantLabel})' : ''}',
                 imageUrl: _product!.imageUrls.isNotEmpty ? _product!.imageUrls.first : null,
+                price: price,
+                qty: _qty,
               ),
             ],
+            feeLines: feeLines,
           ),
         ),
       );

@@ -191,19 +191,35 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _goToPayment() {
-    // Items for the SELECTED cart items only, e.g. "ໝາກທ້ວາ x1" + image.
+    // Items for the SELECTED cart items only, with unit price/qty so the
+    // payment screen can show "name  price x qty = subtotal" per line.
     final items = _groups
         .expand((g) => g.items)
         .where((i) => _selectedIds.contains(i.id))
         .map((i) {
-          final qtyLabel = i.qty == i.qty.roundToDouble() ? i.qty.toInt().toString() : i.qty.toString();
           final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
-          return (name: '${i.productName}$variantSuffix x$qtyLabel', imageUrl: i.imageUrl);
+          return (name: '${i.productName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty);
         })
         .toList();
 
+    // Fee breakdown across ALL selected stores, combined by fee name
+    // (e.g. two stores each charging "Delivery Fee" show as one summed
+    // line rather than two separate ones).
+    final Map<String, double> combinedFees = {};
+    for (final group in _groups) {
+      final subtotal = _selectedSubtotalForGroup(group);
+      if (subtotal <= 0) continue;
+      final lines = _feeConfigService.computeFeeLines(_activeFees, subtotal);
+      for (final line in lines) {
+        combinedFees[line.name] = (combinedFees[line.name] ?? 0) + line.amount;
+      }
+    }
+    final feeLines = combinedFees.entries.map((e) => (name: e.key, amount: e.value)).toList();
+
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => BuyerPaymentScreen(amount: _grandTotal, items: items)),
+      MaterialPageRoute(
+        builder: (_) => BuyerPaymentScreen(amount: _grandTotal, items: items, feeLines: feeLines),
+      ),
     ).then((_) => _load()); // refresh cart after returning
   }
 

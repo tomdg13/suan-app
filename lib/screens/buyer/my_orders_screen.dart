@@ -211,10 +211,10 @@ class _OrderCard extends StatelessWidget {
             amount: order.totalAmount,
             existingOrderId: order.id,
             items: order.items.map((i) {
-              final qtyLabel = i.qty == i.qty.roundToDouble() ? i.qty.toInt().toString() : i.qty.toString();
               final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
-              return (name: '${i.itemName}$variantSuffix x$qtyLabel', imageUrl: i.imageUrl);
+              return (name: '${i.itemName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty);
             }).toList(),
+            feeLines: order.deliveryFee > 0 ? [(name: 'ຄ່າທຳນຽມ', amount: order.deliveryFee)] : [],
           ),
         ),
       );

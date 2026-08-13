@@ -29,17 +29,17 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
-  // What's being paid for, shown under the amount so the buyer (and an
-  // admin reviewing payment proof later) can see what this payment
-  // actually covers — e.g. ("ໝາກທ້ວາ x1", imageUrl).
-  final List<({String name, String? imageUrl})> items;
-  // When set, this screen pays for an ALREADY-CREATED order (e.g. the
-  // buyer tapped "Pay Now" on an existing unpaid order from My Orders)
-  // instead of creating a new one from the cart. Address/delivery-method
-  // selection is skipped since those were already set at checkout time.
+  final List<({String name, String? imageUrl, double price, double qty})> items;
+  final List<({String name, double amount})> feeLines;
   final int? existingOrderId;
 
-  const BuyerPaymentScreen({super.key, required this.amount, this.items = const [], this.existingOrderId});
+  const BuyerPaymentScreen({
+    super.key,
+    required this.amount,
+    this.items = const [],
+    this.feeLines = const [],
+    this.existingOrderId,
+  });
 
   @override
   State<BuyerPaymentScreen> createState() => _BuyerPaymentScreenState();
@@ -391,6 +391,27 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
 
   Widget _buildAmountCard() {
     final priceFormat = NumberFormat.decimalPattern('en_US');
+
+    String qtyLabel(double qty) => qty == qty.roundToDouble() ? qty.toInt().toString() : qty.toString();
+
+    Widget lineRow({required Widget left, required String rightText, TextStyle? rightStyle}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 8),
+            Text(
+              rightText,
+              style: rightStyle ??
+                  const TextStyle(fontSize: 13, color: Color(AppColors.textDarkValue), fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -399,29 +420,19 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Amount to Pay', style: TextStyle(color: Colors.black54, fontSize: 13)),
-          const SizedBox(height: 6),
-          Text(
-            '${priceFormat.format(widget.amount)} ກີບ',
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Color(AppColors.primaryValue),
-            ),
-          ),
+          const Text('ລາຍລະອຽດການຊຳລະ', style: TextStyle(color: Colors.black54, fontSize: 13)),
           if (widget.items.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Container(height: 1, color: const Color(AppColors.borderValue)),
-            const SizedBox(height: 10),
-            ...widget.items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+            ...widget.items.map((item) {
+              final subtotal = item.price * item.qty;
+              return lineRow(
+                left: Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: const Color(AppColors.borderValue)),
@@ -432,22 +443,43 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                           ? Image.network(
                               '${ApiConfig.mediaBaseUrl}${item.imageUrl}',
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 16, color: Colors.black26),
+                              errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 14, color: Colors.black26),
                             )
-                          : const Icon(Icons.image, size: 16, color: Colors.black26),
+                          : const Icon(Icons.image, size: 14, color: Colors.black26),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        item.name,
+                        '${item.name}  ${priceFormat.format(item.price)} x ${qtyLabel(item.qty)}',
                         style: const TextStyle(fontSize: 13, color: Color(AppColors.textDarkValue)),
                       ),
                     ),
                   ],
                 ),
+                rightText: '${priceFormat.format(subtotal)} ກີບ',
+              );
+            }),
+          ],
+          if (widget.feeLines.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(height: 1, color: const Color(AppColors.borderValue)),
+            const SizedBox(height: 6),
+            ...widget.feeLines.map(
+              (fee) => lineRow(
+                left: Text(fee.name, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                rightText: '${priceFormat.format(fee.amount)} ກີບ',
+                rightStyle: const TextStyle(fontSize: 13, color: Colors.black54),
               ),
             ),
           ],
+          const SizedBox(height: 6),
+          Container(height: 1, color: const Color(AppColors.borderValue)),
+          const SizedBox(height: 10),
+          lineRow(
+            left: const Text('ລວມທັງໝົດ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            rightText: '${priceFormat.format(widget.amount)} ກີບ',
+            rightStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(AppColors.primaryValue)),
+          ),
         ],
       ),
     );
