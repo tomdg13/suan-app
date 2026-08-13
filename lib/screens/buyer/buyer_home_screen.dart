@@ -23,6 +23,7 @@ import 'product_detail_screen.dart';
 import 'store_page_screen.dart';
 import 'cart_screen.dart';
 import 'my_orders_screen.dart';
+import 'buyer_profile_screen.dart';
 
 /// Public storefront — this is the app's home screen. Anyone can browse
 /// categories and products without logging in. Login is only triggered
@@ -149,42 +150,8 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
     } else if (role == 'seller') {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SellerShellScreen()));
     } else {
-      _showAccountSheet();
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerProfileScreen()));
     }
-  }
-
-  void _showAccountSheet() {
-    final appState = context.read<AppState>();
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: Text(appState.currentUser?.fullName ?? ''),
-              subtitle: Text(appState.currentUser?.phone ?? ''),
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: const Text('My Orders'),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () async {
-                await appState.logout();
-                if (mounted) Navigator.of(context).pop();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _onBottomNavTap(int index) {
