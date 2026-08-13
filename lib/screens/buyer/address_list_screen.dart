@@ -200,6 +200,19 @@ class _AddressCard extends StatelessWidget {
           Text(address.phone, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
           const SizedBox(height: 4),
           Text(address.shortDisplay, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+          if (address.hasPin) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 13, color: Colors.grey.shade500),
+                const SizedBox(width: 4),
+                Text(
+                  'ມີໝຸດຕຳແໜ່ງແລ້ວ',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ],
           const Divider(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,

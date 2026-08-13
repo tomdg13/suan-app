@@ -29,7 +29,9 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
       final bytes = await picked.readAsBytes();
       final avatarUrl = await _uploadService.uploadMyAvatar(Uint8List.fromList(bytes));
       if (mounted) {
-        context.read<AppState>().updateAvatarUrl(avatarUrl);
+        final appState = context.read<AppState>();
+        appState.currentUser = appState.currentUser?.copyWith(avatarUrl: avatarUrl);
+        appState.notifyListeners();
       }
     } catch (e) {
       if (mounted) {
@@ -133,7 +135,7 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
                     Row(
                       children: [
                         const Text(
-                          'My Orders',
+                          'ຄໍາສັ່ງຊື້ຂອງຂ້ອຍ',
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(AppColors.textDarkValue)),
                         ),
                         const Spacer(),
@@ -143,7 +145,7 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              Text('View All Orders', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                              Text('ເບິ່ງທັງໝົດ', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
                               Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade600),
                             ],
                           ),
@@ -156,27 +158,27 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
                       children: [
                         _OrderStatusIcon(
                           icon: Icons.account_balance_wallet_outlined,
-                          label: 'To Pay',
+                          label: 'ລໍຈ່າຍເງິນ',
                           onTap: () => _openOrders(context, OrderStatusFilter.toPay),
                         ),
                         _OrderStatusIcon(
                           icon: Icons.inventory_2_outlined,
-                          label: 'To Ship',
+                          label: 'ລໍຈັດສົ່ງ',
                           onTap: () => _openOrders(context, OrderStatusFilter.toShip),
                         ),
                         _OrderStatusIcon(
                           icon: Icons.local_shipping_outlined,
-                          label: 'To Receive',
+                          label: 'ລໍຮັບເຄື່ອງ',
                           onTap: () => _openOrders(context, OrderStatusFilter.toReceive),
                         ),
                         _OrderStatusIcon(
                           icon: Icons.rate_review_outlined,
-                          label: 'To Review',
+                          label: 'ໃຫ້ຄະແນນ',
                           onTap: () => _openOrders(context, OrderStatusFilter.toReview),
                         ),
                         _OrderStatusIcon(
                           icon: Icons.assignment_return_outlined,
-                          label: 'Returns',
+                          label: 'ຄືນເຄື່ອງ',
                           onTap: () => _openOrders(context, OrderStatusFilter.returns),
                         ),
                       ],
@@ -203,7 +205,7 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.logout),
-                      title: const Text('Logout'),
+                      title: const Text('ອອກຈາກລະບົບ'),
                       onTap: () async {
                         await appState.logout();
                         if (context.mounted) Navigator.of(context).pop();

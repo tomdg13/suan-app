@@ -7,6 +7,8 @@ class UserAddress {
   final String? village;
   final String? district;
   final String? province;
+  final double? latitude;
+  final double? longitude;
   final bool isDefault;
 
   UserAddress({
@@ -18,6 +20,8 @@ class UserAddress {
     this.village,
     this.district,
     this.province,
+    this.latitude,
+    this.longitude,
     required this.isDefault,
   });
 
@@ -31,9 +35,20 @@ class UserAddress {
       village: json['village'] as String?,
       district: json['district'] as String?,
       province: json['province'] as String?,
+      latitude: _parseDouble(json['latitude']),
+      longitude: _parseDouble(json['longitude']),
       isDefault: (json['isDefault'] as int? ?? 0) == 1,
     );
   }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  bool get hasPin => latitude != null && longitude != null;
 
   /// One-line display, e.g. "123 Main Rd, Sikhottabong, Vientiane"
   String get shortDisplay {
