@@ -50,11 +50,11 @@ class _AdminBannersViewState extends State<AdminBannersView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete banner?'),
-        content: const Text('This removes it from the storefront permanently.'),
+        title: const Text('ລຶບແບນເນີ?'),
+        content: const Text('ອັນນີ້ຈະລຶບອອກຈາກໜ້າຮ້ານຢ່າງຖາວອນ.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('ຍົກເລີກ')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('ລຶບ')),
         ],
       ),
     );
@@ -88,22 +88,22 @@ class _AdminBannersViewState extends State<AdminBannersView> {
         children: [
           Row(
             children: [
-              const Text('Banners', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text('ແບນເນີ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const Spacer(),
               FilledButton.icon(
                 onPressed: () => _openForm(),
                 icon: const Icon(Icons.add),
-                label: const Text('Add Banner'),
+                label: const Text('ເພີ່ມແບນເນີ'),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'These show as the swipeable promo carousel on the storefront home screen.',
+            'ອັນເຫຼົ່ານີ້ຈະສະແດງເປັນສະໄລ້ໂປຣໂມຊັນເທິງໜ້າຫຼັກຂອງຮ້ານ.',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 16),
-          if (_banners.isEmpty) const Text('No banners yet — add one to replace the default placeholder.'),
+          if (_banners.isEmpty) const Text('ຍັງບໍ່ມີແບນເນີ — ເພີ່ມອັນໜຶ່ງເພື່ອແທນທີ່ຮູບເລີ່ມຕົ້ນ.'),
           ..._banners.map((banner) {
             final hasTitle = banner.title != null && banner.title!.trim().isNotEmpty;
             final hasSubtitle = banner.subtitle != null && banner.subtitle!.trim().isNotEmpty;
@@ -124,7 +124,7 @@ class _AdminBannersViewState extends State<AdminBannersView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(hasTitle ? banner.title! : '(no title)',
+                          Text(hasTitle ? banner.title! : '(ບໍ່ມີຫົວຂໍ້)',
                               style: const TextStyle(fontWeight: FontWeight.bold)),
                           if (hasSubtitle)
                             Text(banner.subtitle!,
@@ -191,7 +191,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
         builder: (_) => ImageCropScreen(
           imageBytes: rawBytes,
           aspectRatio: 2.2, // wide banner shape
-          title: 'Crop Banner',
+          title: 'ຕັດຮູບແບນເນີ',
         ),
       ),
     );
@@ -204,7 +204,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
 
   Future<void> _submit() async {
     if (!_isEditMode && _pickedImage == null) {
-      setState(() => _error = 'A banner image is required');
+      setState(() => _error = 'ຕ້ອງມີຮູບແບນເນີ');
       return;
     }
     setState(() {
@@ -249,7 +249,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_isEditMode ? 'Edit Banner' : 'Add Banner',
+            Text(_isEditMode ? 'ແກ້ໄຂແບນເນີ' : 'ເພີ່ມແບນເນີ',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             GestureDetector(
@@ -274,24 +274,24 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
             OutlinedButton.icon(
               onPressed: _pickImage,
               icon: const Icon(Icons.image_outlined, size: 18),
-              label: Text(_pickedImage != null || widget.existing != null ? 'Change image' : 'Pick image'),
+              label: Text(_pickedImage != null || widget.existing != null ? 'ປ່ຽນຮູບ' : 'ເລືອກຮູບ'),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: 'Title (optional)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'ຫົວຂໍ້ (ບໍ່ບັງຄັບ)', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _subtitleCtrl,
-              decoration: const InputDecoration(labelText: 'Subtitle (optional)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'ຫົວຂໍ້ຍ່ອຍ (ບໍ່ບັງຄັບ)', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _linkCtrl,
               decoration: const InputDecoration(
-                labelText: 'Tap action (optional)',
-                hintText: 'e.g. store:5, category:2, or product:10',
+                labelText: 'ການກະທຳເມື່ອກົດ (ບໍ່ບັງຄັບ)',
+                hintText: 'ຕົວຢ່າງ store:5, category:2, ຫຼື product:10',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -300,7 +300,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Tapping the banner opens that store/category/product. Leave blank for no action.',
+                  'ການກົດແບນເນີຈະເປີດຮ້ານ/ໝວດໝູ່/ສິນຄ້ານັ້ນ. ປະໄວ້ຫວ່າງຖ້າບໍ່ຕ້ອງການໃຫ້ມີການກະທຳ.',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ),
@@ -316,7 +316,7 @@ class _BannerFormSheetState extends State<_BannerFormSheet> {
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
                     ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(_isEditMode ? 'Save changes' : 'Add banner'),
+                    : Text(_isEditMode ? 'ບັນທຶກການປ່ຽນແປງ' : 'ເພີ່ມແບນເນີ'),
               ),
             ),
           ],

@@ -98,7 +98,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
             }
 
             return AlertDialog(
-              title: const Text('Edit User'),
+              title: const Text('ແກ້ໄຂຜູ້ໃຊ້'),
               content: SizedBox(
                 width: 360,
                 child: Column(
@@ -107,21 +107,21 @@ class _AdminUsersViewState extends State<AdminUsersView> {
                     TextField(
                       controller: nameCtrl,
                       decoration: const InputDecoration(
-                          labelText: 'Full name', border: OutlineInputBorder()),
+                          labelText: 'ຊື່ເຕັມ', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: phoneCtrl,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(
-                          labelText: 'Phone', border: OutlineInputBorder()),
+                          labelText: 'ເບີໂທ', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                          labelText: 'Email (optional)', border: OutlineInputBorder()),
+                          labelText: 'ອີເມວ (ບໍ່ບັງຄັບ)', border: OutlineInputBorder()),
                     ),
                     if (error != null) ...[
                       const SizedBox(height: 8),
@@ -133,14 +133,14 @@ class _AdminUsersViewState extends State<AdminUsersView> {
               actions: [
                 TextButton(
                   onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('ຍົກເລີກ'),
                 ),
                 FilledButton(
                   onPressed: saving ? null : save,
                   child: saving
                       ? const SizedBox(
                           width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Save'),
+                      : const Text('ບັນທຶກ'),
                 ),
               ],
             );
@@ -165,7 +165,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(child: Text('Error: $_error'));
+      return Center(child: Text('ຜິດພາດ: $_error'));
     }
 
     return LayoutBuilder(
@@ -177,7 +177,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              const Text('Users', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text('ຜູ້ໃຊ້', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               ..._users.map((user) => _buildUserCard(user, isMobile)),
             ],
@@ -217,7 +217,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
             children: [
               IconButton(
                 icon: const Icon(Icons.edit, size: 20),
-                tooltip: 'Edit user',
+                tooltip: 'ແກ້ໄຂຜູ້ໃຊ້',
                 onPressed: () => _openEditDialog(user),
               ),
               roleDropdown,
@@ -270,7 +270,7 @@ class _AdminUsersViewState extends State<AdminUsersView> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
-                  tooltip: 'Edit user',
+                  tooltip: 'ແກ້ໄຂຜູ້ໃຊ້',
                   onPressed: () => _openEditDialog(user),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),

@@ -11,6 +11,7 @@ import 'views/admin_applications_view.dart';
 import 'views/admin_orders_view.dart';
 import 'views/admin_withdrawals_view.dart';
 import 'views/admin_banners_view.dart';
+import 'views/admin_categories_view.dart';
 import 'views/admin_seller_tools_view.dart';
 import 'views/admin_payment_confirmations_view.dart';
 import 'views/admin_fee_configs_view.dart';
@@ -39,33 +40,34 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static const _groups = [
-    NavGroup(title: 'Dashboard', items: [
-      NavItem(label: 'Overview', icon: Icons.dashboard, index: 0),
+    NavGroup(title: 'ໜ້າຫຼັກ', items: [
+      NavItem(label: 'ພາບລວມ', icon: Icons.dashboard, index: 0),
     ]),
-    NavGroup(title: 'Content', items: [
-      NavItem(label: 'Banners', icon: Icons.view_carousel, index: 1),
+    NavGroup(title: 'ເນື້ອຫາ', items: [
+      NavItem(label: 'ແບນເນີ', icon: Icons.view_carousel, index: 1),
+      NavItem(label: 'ໝວດໝູ່', icon: Icons.category, index: 12),
     ]),
-    NavGroup(title: 'User Management', items: [
-      NavItem(label: 'Users', icon: Icons.people, index: 2),
-      NavItem(label: 'Roles', icon: Icons.badge, index: 3),
+    NavGroup(title: 'ຈັດການຜູ້ໃຊ້', items: [
+      NavItem(label: 'ຜູ້ໃຊ້', icon: Icons.people, index: 2),
+      NavItem(label: 'ບົດບາດ', icon: Icons.badge, index: 3),
     ]),
-    NavGroup(title: 'Store Management', items: [
-      NavItem(label: 'Stores', icon: Icons.storefront, index: 4),
-      NavItem(label: 'Applications', icon: Icons.assignment_turned_in, index: 5),
+    NavGroup(title: 'ຈັດການຮ້ານຄ້າ', items: [
+      NavItem(label: 'ຮ້ານຄ້າ', icon: Icons.storefront, index: 4),
+      NavItem(label: 'ຄຳຮ້ອງສະໝັກ', icon: Icons.assignment_turned_in, index: 5),
     ]),
-    NavGroup(title: 'Orders', items: [
-      NavItem(label: 'All Orders', icon: Icons.receipt_long, index: 6),
+    NavGroup(title: 'ຄໍາສັ່ງຊື້', items: [
+      NavItem(label: 'ຄໍາສັ່ງຊື້ທັງໝົດ', icon: Icons.receipt_long, index: 6),
     ]),
-    NavGroup(title: 'Finance', items: [
-      NavItem(label: 'Withdrawals', icon: Icons.account_balance_wallet, index: 7),
-      NavItem(label: 'Payment QR', icon: Icons.qr_code, index: 9),
-      NavItem(label: 'Payment Confirmations', icon: Icons.fact_check, index: 10),
-      NavItem(label: 'Fees', icon: Icons.receipt_long_outlined, index: 11),
+    NavGroup(title: 'ການເງິນ', items: [
+      NavItem(label: 'ຖອນເງິນ', icon: Icons.account_balance_wallet, index: 7),
+      NavItem(label: 'QR ຊຳລະເງິນ', icon: Icons.qr_code, index: 9),
+      NavItem(label: 'ຢືນຢັນການຊຳລະເງິນ', icon: Icons.fact_check, index: 10),
+      NavItem(label: 'ຄ່າທຳນຽມ', icon: Icons.receipt_long_outlined, index: 11),
     ]),
     // New: lets the admin operate a store the same way a seller does
     // (Store Profile, Products, Orders) without leaving the adminpanel.
-    NavGroup(title: 'Seller Tools', items: [
-      NavItem(label: 'My Store', icon: Icons.storefront_outlined, index: 8),
+    NavGroup(title: 'ເຄື່ອງມືຮ້ານຄ້າ', items: [
+      NavItem(label: 'ຮ້ານຂອງຂ້ອຍ', icon: Icons.storefront_outlined, index: 8),
     ]),
   ];
 
@@ -82,31 +84,33 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     AdminPaymentQrUploadScreen(),
     AdminPaymentConfirmationsView(),
     AdminFeeConfigsView(),
+    const AdminCategoriesView(),
   ];
 
   // Flat label lookup for the mobile AppBar title, keyed by the same
   // `index` values used in `_groups`.
   static const _titles = [
-    'Overview',
-    'Banners',
-    'Users',
-    'Roles',
-    'Stores',
-    'Applications',
-    'All Orders',
-    'Withdrawals',
-    'My Store',
-    'Payment QR',
-    'Payment Confirmations',
-    'Fees',
+    'ພາບລວມ',
+    'ແບນເນີ',
+    'ຜູ້ໃຊ້',
+    'ບົດບາດ',
+    'ຮ້ານຄ້າ',
+    'ຄຳຮ້ອງສະໝັກ',
+    'ຄໍາສັ່ງຊື້ທັງໝົດ',
+    'ຖອນເງິນ',
+    'ຮ້ານຂອງຂ້ອຍ',
+    'QR ຊຳລະເງິນ',
+    'ຢືນຢັນການຊຳລະເງິນ',
+    'ຄ່າທຳນຽມ',
+    'ໝວດໝູ່ສິນຄ້າ',
   ];
 
   static const _bottomNavItems = [
-    BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Overview'),
-    BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'Stores'),
-    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label:'Orders'),
-    BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Withdrawals'),
-    BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'More'),
+    BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'ພາບລວມ'),
+    BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'ຮ້ານຄ້າ'),
+    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'ຄໍາສັ່ງຊື້'),
+    BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'ຖອນເງິນ'),
+    BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'ອື່ນໆ'),
   ];
 
   Future<void> _logout() async {
@@ -161,7 +165,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                     setState(() => _selected = i);
                     Navigator.of(context).pop(); // close drawer after picking
                   },
-                  headerTitle: 'Admin Dashboard',
+                  headerTitle: 'ແຜງຄວບຄຸມແອັດມິນ',
                   headerIcon: Icons.admin_panel_settings,
                   onLogout: _logout,
                 ),
@@ -185,7 +189,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 groups: _groups,
                 selectedIndex: _selected,
                 onSelect: (i) => setState(() => _selected = i),
-                headerTitle: 'Admin Dashboard',
+                headerTitle: 'ແຜງຄວບຄຸມແອັດມິນ',
                 headerIcon: Icons.admin_panel_settings,
                 onLogout: _logout,
               ),

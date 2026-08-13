@@ -6,7 +6,7 @@ import '../../../services/order_service.dart';
 
 /// Admin queue: orders where the buyer has uploaded a payment screenshot
 /// + RRN but nobody has confirmed the money actually landed in the
-/// store's bank account yet. Confirming here marks paymentStatus: paid
+/// store's bank account yet. Confirming here marks paymentStatus:paid
 /// and moves the order to CONFIRMED, so the seller can start packing.
 class AdminPaymentConfirmationsView extends StatefulWidget {
   const AdminPaymentConfirmationsView({super.key});
@@ -46,13 +46,13 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
         _confirming.remove(order.id);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${order.orderCode} confirmed as paid')),
+        SnackBar(content: Text('${order.orderCode} ຢືນຢັນວ່າຈ່າຍເງິນແລ້ວ')),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _confirming.remove(order.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not confirm: $e')),
+        SnackBar(content: Text('ບໍ່ສາມາດຢືນຢັນໄດ້: $e')),
       );
     }
   }
@@ -89,7 +89,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
         children: [
           Row(
             children: [
-              const Text('Payment Confirmations', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text('ຢືນຢັນການຊຳລະເງິນ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(width: 10),
               if (_orders.isNotEmpty)
                 Container(
@@ -99,7 +99,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${_orders.length} pending',
+                    '${_orders.length} ລໍຖ້າ',
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(AppColors.warningValue)),
                   ),
                 ),
@@ -107,7 +107,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
           ),
           const SizedBox(height: 4),
           Text(
-            'Buyers who uploaded payment proof — verify the money actually arrived before confirming.',
+            'ຜູ້ຊື້ທີ່ອັບໂຫລດຫຼັກຖານການຈ່າຍເງິນ — ກວດສອບວ່າເງິນເຂົ້າແທ້ ກ່ອນຢືນຢັນ.',
             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
@@ -120,7 +120,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
                   children: [
                     Icon(Icons.check_circle_outline, size: 48, color: Colors.grey.shade400),
                     const SizedBox(height: 12),
-                    Text('Nothing waiting on confirmation', style: TextStyle(color: Colors.grey.shade600)),
+                    Text('ບໍ່ມີລາຍການລໍຖ້າການຢືນຢັນ', style: TextStyle(color: Colors.grey.shade600)),
                   ],
                 ),
               ),
@@ -163,7 +163,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
                           Text(order.orderCode, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           const SizedBox(height: 2),
                           Text(
-                            '${order.buyerName ?? 'Unknown buyer'} · ${order.buyerPhone ?? ''}',
+                            '${order.buyerName ?? 'ບໍ່ຮູ້ຈັກຜູ້ຊື້'} · ${order.buyerPhone ?? ''}',
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                           ),
                           if (order.storeName != null)
@@ -174,7 +174,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
                               const Text('RRN: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               Expanded(
                                 child: Text(
-                                  order.rrn?.isNotEmpty == true ? order.rrn! : '(not provided)',
+                                  order.rrn?.isNotEmpty == true ? order.rrn! : '(ບໍ່ໄດ້ລະບຸ)',
                                   style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                                 ),
                               ),
@@ -206,7 +206,7 @@ class _AdminPaymentConfirmationsViewState extends State<AdminPaymentConfirmation
                             ),
                             onPressed: isConfirming ? null : () => _confirm(order),
                             child: Text(
-                              isConfirming ? '...' : 'Confirm Payment',
+                              isConfirming ? '...' : 'ຢືນຢັນການຈ່າຍເງິນ',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ),

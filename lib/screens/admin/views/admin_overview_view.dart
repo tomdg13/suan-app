@@ -42,7 +42,7 @@ class _AdminOverviewViewState extends State<AdminOverviewView> {
 
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(child: Text('Error: $_error'));
+      return Center(child: Text('ຜິດພາດ: $_error'));
     }
 
     return RefreshIndicator(
@@ -50,14 +50,14 @@ class _AdminOverviewViewState extends State<AdminOverviewView> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Overview', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text('ພາບລວມ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           _buildSummaryCards(priceFormat),
           const SizedBox(height: 24),
-          _buildSectionTitle('Recent Orders'),
+          _buildSectionTitle('ຄໍາສັ່ງຊື້ຫຼ້າສຸດ'),
           _buildOrdersList(priceFormat),
           const SizedBox(height: 24),
-          _buildSectionTitle('Top Stores'),
+          _buildSectionTitle('ຮ້ານຄ້າຍອດນິຍົມ'),
           _buildTopStores(priceFormat),
         ],
       ),
@@ -74,10 +74,10 @@ class _AdminOverviewViewState extends State<AdminOverviewView> {
   Widget _buildSummaryCards(NumberFormat priceFormat) {
     final summary = _data?['summary'] as Map<String, dynamic>? ?? {};
     final cards = [
-      ('Total Sales', '${priceFormat.format(num.tryParse('${summary['total_sales']}') ?? 0)} ກີບ', Icons.payments),
-      ('Total Orders', '${summary['total_orders'] ?? 0}', Icons.receipt_long),
-      ('Total Stores', '${summary['total_stores'] ?? 0}', Icons.storefront),
-      ('Total Customers', '${summary['total_customers'] ?? 0}', Icons.people),
+      ('ຍອດຂາຍທັງໝົດ', '${priceFormat.format(num.tryParse('${summary['total_sales']}') ?? 0)} ກີບ', Icons.payments),
+      ('ຄໍາສັ່ງຊື້ທັງໝົດ', '${summary['total_orders'] ?? 0}', Icons.receipt_long),
+      ('ຮ້ານຄ້າທັງໝົດ', '${summary['total_stores'] ?? 0}', Icons.storefront),
+      ('ລູກຄ້າທັງໝົດ', '${summary['total_customers'] ?? 0}', Icons.people),
     ];
 
     return LayoutBuilder(builder: (context, constraints) {
@@ -112,7 +112,7 @@ class _AdminOverviewViewState extends State<AdminOverviewView> {
 
   Widget _buildOrdersList(NumberFormat priceFormat) {
     final orders = _data?['recentOrders'] as List<dynamic>? ?? [];
-    if (orders.isEmpty) return const Text('No orders yet');
+    if (orders.isEmpty) return const Text('ຍັງບໍ່ມີຄໍາສັ່ງຊື້');
     return Column(
       children: orders.take(5).map((o) {
         return Card(
@@ -128,14 +128,14 @@ class _AdminOverviewViewState extends State<AdminOverviewView> {
 
   Widget _buildTopStores(NumberFormat priceFormat) {
     final stores = _data?['topStores'] as List<dynamic>? ?? [];
-    if (stores.isEmpty) return const Text('No data yet');
+    if (stores.isEmpty) return const Text('ຍັງບໍ່ມີຂໍ້ມູນ');
     return Column(
       children: stores.take(5).map((s) {
         return Card(
           child: ListTile(
             leading: const Icon(Icons.storefront, color: Colors.green),
             title: Text('${s['store_name']}'),
-            subtitle: Text('${s['total_orders']} orders'),
+            subtitle: Text('${s['total_orders']} ຄໍາສັ່ງຊື້'),
             trailing: Text('${priceFormat.format(num.tryParse('${s['total_revenue']}') ?? 0)} ກີບ'),
           ),
         );

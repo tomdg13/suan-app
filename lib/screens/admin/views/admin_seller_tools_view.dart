@@ -10,7 +10,7 @@ import '../../seller/views/seller_orders_view.dart';
 /// widgets so behavior/UI always stays in sync with the real seller flow.
 ///
 /// Loads whichever store the admin account owns, exactly the way
-/// SellerShellScreen does. If the admin account has no store yet, shows a
+/// SellerShellScreen does. If the admin account has no store yet,shows a
 /// short message instead (there's no "create store" step here — that's
 /// meant to happen via the normal seller onboarding flow).
 class AdminSellerToolsView extends StatefulWidget {
@@ -27,7 +27,7 @@ class _AdminSellerToolsViewState extends State<AdminSellerToolsView> {
   Store? _store;
   bool _loadingStore = true;
 
-  static const _tabLabels = ['Store Profile', 'Products', 'Orders'];
+  static const _tabLabels = ['ໂປຣໄຟລ໌ຮ້ານ', 'ສິນຄ້າ', 'ຄໍາສັ່ງຊື້'];
   static const _tabIcons = [Icons.badge, Icons.inventory_2, Icons.receipt_long];
 
   @override
@@ -56,8 +56,8 @@ class _AdminSellerToolsViewState extends State<AdminSellerToolsView> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'This admin account has no store yet.\n'
-            'A store is created automatically once an account becomes a seller.',
+            'ບັນຊີແອັດມິນນີ້ຍັງບໍ່ມີຮ້ານຄ້າ.\n'
+            'ຮ້ານຄ້າຈະຖືກສ້າງອັດຕະໂນມັດເມື່ອບັນຊີກາຍເປັນຜູ້ຂາຍ.',
             textAlign: TextAlign.center,
           ),
         ),

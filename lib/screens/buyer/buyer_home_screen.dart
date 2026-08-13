@@ -475,6 +475,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             return _CategoryTile(
               label: c.nameLao,
               icon: categoryIcon(c.nameEn),
+              iconUrl: c.iconUrl,
               selected: _selectedCategoryId == c.id,
               onTap: () {
                 setState(() => _selectedCategoryId = c.id);
@@ -598,18 +599,23 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
 class _CategoryTile extends StatelessWidget {
   final String label;
   final IconData icon;
+  final String? iconUrl;
   final bool selected;
   final VoidCallback onTap;
 
   const _CategoryTile({
     required this.label,
     required this.icon,
+    this.iconUrl,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = iconUrl != null && iconUrl!.isNotEmpty;
+    final fullUrl = hasImage ? '${ApiConfig.mediaBaseUrl}$iconUrl' : null;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -627,7 +633,22 @@ class _CategoryTile extends StatelessWidget {
                     ? Border.all(color: const Color(AppColors.primaryValue), width: 2)
                     : null,
               ),
-              child: Icon(icon, color: const Color(AppColors.primaryValue), size: 24),
+              clipBehavior: Clip.antiAlias,
+              child: hasImage
+                  ? ClipOval(
+                      child: Image.network(
+                        fullUrl!,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          icon,
+                          color: const Color(AppColors.primaryValue),
+                          size: 24,
+                        ),
+                      ),
+                    )
+                  : Icon(icon, color: const Color(AppColors.primaryValue), size: 24),
             ),
             const SizedBox(height: 4),
             Text(

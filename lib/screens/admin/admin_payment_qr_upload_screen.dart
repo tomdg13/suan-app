@@ -18,7 +18,7 @@ class AdminPaymentQrUploadScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Payment QR')),
+      appBar: AppBar(title: const Text('QR ຊຳລະເງິນ')),
       body: const SafeArea(child: PaymentQrUploadView()),
     );
   }
@@ -41,7 +41,7 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
   // PaymentQrService(authToken: context.read<AppState>().token)
   final _qrService = PaymentQrService();
 
-  // Bytes (not dart:io File) so the preview + upload both work on Web,
+  // Bytes (not dart:io File) so the preview + upload both work onWeb,
   // mobile, and desktop the same way.
   Uint8List? _pickedImageBytes;
   String? _pickedImageName;
@@ -108,12 +108,12 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment QR uploaded successfully.')),
+        const SnackBar(content: Text('ອັບໂຫລດ QR ຊຳລະເງິນສຳເລັດແລ້ວ.')),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Upload failed: $e';
+        _error = 'ອັບໂຫລດບໍ່ສຳເລັດ: $e';
         _isUploading = false;
       });
     }
@@ -125,7 +125,7 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
       MaterialPageRoute(
         builder: (_) => PaymentQrViewScreen(
           qrImageUrl: _existingQrUrl!,
-          subtitle: 'Current payment QR',
+          subtitle: 'QR ຊຳລະເງິນປັດຈຸບັນ',
         ),
       ),
     );
@@ -141,8 +141,8 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Upload the QR code buyers/sellers will scan to pay '
-                      '(e.g. PromptPay or bank transfer QR).',
+                      'ອັບໂຫລດລະຫັດ QR ທີ່ຜູ້ຊື້/ຜູ້ຂາຍຈະສະແກນເພື່ອຈ່າຍເງິນ '
+                      '(ເຊັ່ນ: PromptPay ຫຼື QR ໂອນເງິນທະນາຄານ).',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 20),
@@ -174,7 +174,7 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
                     OutlinedButton.icon(
                       onPressed: _isUploading ? null : _pickImage,
                       icon: const Icon(Icons.photo_library_outlined),
-                      label: Text(_pickedImageBytes == null ? 'Choose QR image' : 'Choose a different image'),
+                      label: Text(_pickedImageBytes == null ? 'ເລືອກຮູບ QR' : 'ເລືອກຮູບອື່ນ'),
                     ),
                     const SizedBox(height: 12),
 
@@ -187,7 +187,7 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.upload),
-                      label: Text(_isUploading ? 'Uploading…' : 'Upload QR'),
+                      label: Text(_isUploading ? 'ກຳລັງອັບໂຫລດ…' : 'ອັບໂຫລດ QR'),
                     ),
 
                     if (_error != null) ...[
@@ -200,7 +200,7 @@ class _PaymentQrUploadViewState extends State<PaymentQrUploadView> {
                       TextButton.icon(
                         onPressed: _openQrLink,
                         icon: const Icon(Icons.open_in_full),
-                        label: const Text('View current QR full-size'),
+                        label: const Text('ເບິ່ງ QR ປັດຈຸບັນຂະໜາດເຕັມ'),
                       ),
                     ],
                   ],

@@ -38,7 +38,7 @@ class _AdminApplicationsViewState extends State<AdminApplicationsView> {
       await _storeService.approveApplication(id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Application approved — store created')),
+        const SnackBar(content: Text('ອະນຸມັດຄຳຮ້ອງແລ້ວ — ສ້າງຮ້ານຄ້າແລ້ວ')),
       );
       _load();
     } on ApiException catch (e) {
@@ -55,7 +55,7 @@ class _AdminApplicationsViewState extends State<AdminApplicationsView> {
       await _storeService.rejectApplication(id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Application rejected')),
+        const SnackBar(content: Text('ປະຕິເສດຄຳຮ້ອງແລ້ວ')),
       );
       _load();
     } on ApiException catch (e) {
@@ -75,10 +75,10 @@ class _AdminApplicationsViewState extends State<AdminApplicationsView> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Seller Applications',
+          const Text('ຄຳຮ້ອງສະໝັກເປັນຜູ້ຂາຍ',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          if (_applications.isEmpty) const Text('No pending applications'),
+          if (_applications.isEmpty) const Text('ບໍ່ມີຄຳຮ້ອງທີ່ລໍຖ້າ'),
           ..._applications.map((app) {
             final id = app['id'] as int;
             final busy = _processingId == id;
@@ -91,23 +91,23 @@ class _AdminApplicationsViewState extends State<AdminApplicationsView> {
                     Text('${app['store_name']}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 4),
-                    Text('Owner: ${app['owner_name']}'),
-                    Text('Phone: ${app['phone']}'),
+                    Text('ເຈົ້າຂອງ: ${app['owner_name']}'),
+                    Text('ເບີໂທ: ${app['phone']}'),
                     if (app['product_types'] != null)
-                      Text('Products: ${app['product_types']}'),
+                      Text('ສິນຄ້າ: ${app['product_types']}'),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         FilledButton.icon(
                           onPressed: busy ? null : () => _approve(id),
                           icon: const Icon(Icons.check, size: 18),
-                          label: const Text('Approve'),
+                          label: const Text('ອະນຸມັດ'),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton.icon(
                           onPressed: busy ? null : () => _reject(id),
                           icon: const Icon(Icons.close, size: 18),
-                          label: const Text('Reject'),
+                          label: const Text('ປະຕິເສດ'),
                         ),
                         if (busy) ...[
                           const SizedBox(width: 12),
