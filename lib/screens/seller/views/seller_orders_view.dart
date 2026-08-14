@@ -67,28 +67,28 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
     switch (order.status) {
       case 'pending':
       case 'confirmed':
-        return (status: 'preparing', label: 'Start Preparing');
+        return (status: 'preparing', label: 'ເລີ່ມກຽມສິນຄ້າ');
       case 'preparing':
-        return (status: 'shipped', label: 'Mark Shipped');
+        return (status: 'shipped', label: 'ໝາຍວ່າຈັດສົ່ງແລ້ວ');
       case 'shipped':
-        return (status: 'delivered', label: 'Mark Delivered');
+        return (status: 'delivered', label: 'ໝາຍວ່າສົ່ງເຖິງແລ້ວ');
       default:
         return null; // delivered or cancelled — nothing more to do
     }
   }
 
-  ({Color bg, Color fg, String label}) _statusStyle(String status) {
+  ({Color bg, Color fg, String label}) _statusStyle(String status){
     switch (status) {
       case 'delivered':
-        return (bg: const Color(0xFFE9F7EF), fg: const Color(AppColors.primaryValue), label: 'Delivered');
+        return (bg: const Color(0xFFE9F7EF), fg: const Color(AppColors.primaryValue), label: 'ສົ່ງເຖິງແລ້ວ');
       case 'cancelled':
-        return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'Cancelled');
+        return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'ຍົກເລີກແລ້ວ');
       case 'shipped':
-        return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'Shipped');
+        return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'ຈັດສົ່ງແລ້ວ');
       case 'preparing':
-        return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'Preparing');
+        return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'ກຳລັງກຽມ');
       default:
-        return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'Confirmed');
+        return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'ຢືນຢັນແລ້ວ');
     }
   }
 
@@ -97,7 +97,7 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
     final priceFormat = NumberFormat.decimalPattern('en_US');
 
     if (widget.store == null) {
-      return const Center(child: Text('Select or create a store first (Store Status tab).'));
+      return const Center(child: Text('ກະລຸນາເລືອກ ຫຼື ສ້າງຮ້ານຄ້າກ່ອນ (ແຖບສະຖານະຮ້ານ).'));
     }
     if (_loading) return const Center(child: CircularProgressIndicator());
 
@@ -111,13 +111,13 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
             padding: const EdgeInsets.all(20),
             children: [
               Text(
-                '${widget.store!.storeName} — Orders',
+                '${widget.store!.storeName} — ຄໍາສັ່ງຊື້',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
                 maxLines: isMobile ? 2 : 1,
               ),
               const SizedBox(height: 16),
-              if (_orders.isEmpty) const Text('No orders yet'),
+              if (_orders.isEmpty) const Text('ຍັງບໍ່ມີຄໍາສັ່ງຊື້'),
               ..._orders.map((order) => _buildOrderCard(order, priceFormat, isMobile)),
             ],
           ),
@@ -148,7 +148,7 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              order.proofSubmitted ? 'Awaiting payment confirmation' : 'Awaiting payment',
+              order.proofSubmitted ? 'ລໍຖ້າຢືນຢັນການຊຳລະເງິນ' : 'ລໍຖ້າການຊຳລະເງິນ',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
             ),
           ),
@@ -204,12 +204,12 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
               const Divider(height: 20),
               ..._buildItemRows(order, priceFormat),
               const SizedBox(height: 8),
-              _buildSummaryRow('Delivery Fee', order.deliveryFee, priceFormat),
+              _buildSummaryRow('ຄ່າຈັດສົ່ງ', order.deliveryFee, priceFormat),
               const Divider(height: 20),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
-                  'Total: ${priceFormat.format(order.totalAmount)} ກີບ',
+                  'ລວມ: ${priceFormat.format(order.totalAmount)}ກີບ',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
@@ -235,10 +235,10 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
             const SizedBox(height: 10),
             ..._buildItemRows(order, priceFormat),
             const SizedBox(height: 6),
-            _buildSummaryRow('Delivery Fee', order.deliveryFee, priceFormat),
+            _buildSummaryRow('ຄ່າຈັດສົ່ງ', order.deliveryFee, priceFormat),
             const Divider(height: 20),
             Text(
-              'Total: ${priceFormat.format(order.totalAmount)} ກີບ',
+              'ລວມ: ${priceFormat.format(order.totalAmount)} ກີບ',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 10),
@@ -253,7 +253,7 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
   }
 
   /// One row per item: thumbnail, name × qty, and the line subtotal
-  /// (qty × unit price). Same visual pattern as the buyer's order screen.
+  /// (qty × unit price). Same visual pattern as the buyer's orderscreen.
   List<Widget> _buildItemRows(OrderModel order, NumberFormat priceFormat) {
     return order.items.map((item) {
       final qtyLabel = item.qty == item.qty.roundToDouble() ? item.qty.toInt().toString() : item.qty.toString();
@@ -316,7 +316,7 @@ class _SellerOrdersViewState extends State<SellerOrdersView> {
 
   Widget _statusPill(({Color bg, Color fg, String label}) style) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical:3),
       decoration: BoxDecoration(color: style.bg, borderRadius: BorderRadius.circular(20)),
       child: Text(style.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: style.fg)),
     );

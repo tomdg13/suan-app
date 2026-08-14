@@ -52,20 +52,34 @@ class CatalogService {
 
   Future<void> deleteCategory(int id) async {
     final token = await _api.getToken();
-    final uri = Uri.parse('\${ApiConfig.baseUrl}/categories/\$id');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/categories/$id');
     final headers = <String, String>{};
-    if (token != null) headers['Authorization'] = 'Bearer \$token';
+    if (token != null) headers['Authorization'] = 'Bearer $token';
     final response = await http.delete(uri, headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('Delete failed (\${response.statusCode})', response.statusCode);
+      throw ApiException('Delete failed (${response.statusCode})', response.statusCode);
     }
+  }
+
+
+  Future<String?> getAllIconUrl() async {
+    final json = await _api.get('/categories/all-icon');
+    return (json as Map<String, dynamic>)['iconUrl'] as String?;
+  }
+
+  Future<void> updateAllIcon(Uint8List imageBytes) async {
+    await _multipartRequest(
+      method: 'PATCH',
+      path: '/categories/all-icon',
+      imageBytes: imageBytes,
+    );
   }
 
   Future<Map<String, dynamic>> _multipartRequest({required String method, required String path, Uint8List? imageBytes, Map<String, String> fields = const {}}) async {
     final token = await _api.getToken();
-    final uri = Uri.parse('\${ApiConfig.baseUrl}\$path');
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final request = http.MultipartRequest(method, uri);
-    if (token != null) request.headers['Authorization'] = 'Bearer \$token';
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
     if (imageBytes != null) {
       request.files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: 'category.jpg'));
@@ -75,7 +89,7 @@ class CatalogService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     }
-    String message = 'Request failed (\${response.statusCode})';
+    String message = 'Request failed (${response.statusCode})';
     try {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
       if (body is Map && body['message'] != null) {

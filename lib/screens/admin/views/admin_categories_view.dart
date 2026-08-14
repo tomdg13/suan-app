@@ -17,6 +17,7 @@ class AdminCategoriesView extends StatefulWidget {
 class _AdminCategoriesViewState extends State<AdminCategoriesView> {
   final _service = CatalogService();
   List<ProductCategory> _categories = [];
+  String? _allIconUrl;
   bool _loading = true;
 
   @override
@@ -28,8 +29,11 @@ class _AdminCategoriesViewState extends State<AdminCategoriesView> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final cats = await _service.getCategoriesAdmin();
-      setState(() => _categories = cats);
+      final results = await Future.wait([_service.getCategoriesAdmin(), _service.getAllIconUrl()]);
+      setState(() {
+        _categories = results[0] as List<ProductCategory>;
+        _allIconUrl = results[1] as String?;
+      });
     } finally {
       setState(() => _loading = false);
     }
@@ -112,6 +116,12 @@ class _AdminCategoriesViewState extends State<AdminCategoriesView> {
           ),
           const SizedBox(height: 16),
 
+          // ── ທັງໝົດ special row ─────────────────────────────────
+          _AllIconTile(
+            iconUrl: _allIconUrl,
+            onSaved: _load,
+          ),
+          const Divider(height: 24),
           if (_categories.isEmpty)
             const Text('ຍັງບໍ່ມີໝວດໝູ່ — ກົດ "ເພີ່ມໝວດ" ເພື່ອສ້າງ.')
           else
@@ -410,6 +420,93 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
         Text('ເພີ່ມຮູບ',
             style: TextStyle(fontSize: 11, color: Colors.green)),
       ],
+    );
+  }
+}
+
+// ── ທັງໝົດ icon tile ─────────────────────────────────────────────────────────
+
+class _AllIconTile extends StatefulWidget {
+  final String? iconUrl;
+  final VoidCallback onSaved;
+  const _AllIconTile({this.iconUrl, required this.onSaved});
+
+  @override
+  State<_AllIconTile> createState() => _AllIconTileState();
+}
+
+class _AllIconTileState extends State<_AllIconTile> {
+  final _service = CatalogService();
+  final _picker = ImagePicker();
+  bool _uploading = false;
+
+  String _fullUrl(String path) => '${ApiConfig.mediaBaseUrl}$path';
+
+  Future<void> _pickAndUpload() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final compressed = compressImage(bytes, maxDimension: 800, quality: 85);
+    setState(() => _uploading = true);
+    try {
+      await _service.updateAllIcon(compressed);
+      widget.onSaved();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = widget.iconUrl != null && widget.iconUrl!.isNotEmpty;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 4),
+      color: const Color(AppColors.primaryValue).withValues(alpha: 0.04),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: hasImage
+                  ? Image.network(_fullUrl(widget.iconUrl!), width: 60, height: 60, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder())
+                  : _placeholder(),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('ທັງໝົດ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text('All categories', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('ໄອຄອນໜ້າຫຼັກ', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                ],
+              ),
+            ),
+            _uploading
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                : IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: 'ປ່ຽນຮູບ',
+                    onPressed: _pickAndUpload,
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 60, height: 60,
+      decoration: BoxDecoration(
+        color: const Color(AppColors.primaryValue).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(Icons.grid_view_rounded, color: Colors.green, size: 28),
     );
   }
 }

@@ -51,6 +51,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
   int _bannerIndex = 0;
   int? _selectedCategoryId;
   bool _loading = true;
+  String? _allIconUrl;
   String? _error;
   Timer? _bannerAutoPlayTimer;
 
@@ -90,6 +91,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
       final searchText = _searchCtrl.text.trim();
       final isSearching = searchText.isNotEmpty;
 
+      final allIconResult = _catalogService.getAllIconUrl();
       final results = await Future.wait([
         _catalogService.getCategories(),
         _productService.getProducts(
@@ -118,6 +120,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         _banners = results[2] as List<BannerItem>;
         _featuredStores = results[3] as List<Store>;
       });
+      _allIconUrl = await allIconResult;
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -465,6 +468,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
           _CategoryTile(
             label: 'ທັງໝົດ',
             icon: Icons.grid_view_rounded,
+            iconUrl: _allIconUrl,
             selected: _selectedCategoryId == null,
             onTap: () {
               setState(() => _selectedCategoryId = null);

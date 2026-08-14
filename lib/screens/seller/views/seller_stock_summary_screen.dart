@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../config/constants.dart';
 import '../../../models/store.dart';
 import '../../../models/product.dart';
@@ -58,18 +57,18 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
     final amount = await showDialog<double>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(isIncrease ? 'ເພີ່ມຈຳນວນ' : 'ເອົາອອກຈຳນວນ'), // Add amount / Remove amount
+        title: Text(isIncrease ? 'ເພີ່ມຈຳນວນ' : 'ເອົາອອກຈຳນວນ'),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'ຈຳນວນ', border: OutlineInputBorder()), // Amount
+          decoration: const InputDecoration(labelText: 'ຈຳນວນ', border: OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('ຍົກເລີກ')), // Cancel
+          TextButton(onPressed: () => Navigator.of(context).pop(),child: const Text('ຍົກເລີກ')),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(double.tryParse(ctrl.text.trim())),
-            child: Text(isIncrease ? 'ເພີ່ມ' : 'ເອົາອອກ'), // Add / Remove
+            child: Text(isIncrease ? 'ເພີ່ມ' : 'ເອົາອອກ'),
           ),
         ],
       ),
@@ -102,13 +101,13 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
           controller: ctrl,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'ຈຳນວນຄົງເຫຼືອ', border: OutlineInputBorder()), // Remaining quantity
+          decoration: const InputDecoration(labelText: 'ຈຳນວນຄົງເຫຼືອ', border: OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('ຍົກເລີກ')), // Cancel
+          TextButton(onPressed: () => Navigator.of(context).pop(),child: const Text('ຍົກເລີກ')),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(double.tryParse(ctrl.text.trim())),
-            child: const Text('ບັນທຶກ'), // Save
+            child: const Text('ບັນທຶກ'),
           ),
         ],
       ),
@@ -128,14 +127,14 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('ລຶບສິນຄ້າ?'), // Delete product?
-        content: Text('ລຶບ "${p.nameLao}" ຖາວອນ? ການກະທຳນີ້ບໍ່ສາມາດຍົກເລີກໄດ້.'), // Permanently delete this product? Cannot be undone.
+        title: const Text('ລຶບສິນຄ້າ?'),
+        content: Text('ລຶບ "${p.nameLao}" ຖາວອນ? ການກະທຳນີ້ບໍ່ສາມາດຍົກເລີກໄດ້.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('ຍົກເລີກ')), // Cancel
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('ຍົກເລີກ')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(AppColors.errorValue)),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('ລຶບ'), // Delete
+            child: const Text('ລຶບ'),
           ),
         ],
       ),
@@ -153,7 +152,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('ລຶບບໍ່ໄດ້'), // Cannot delete
+          title: const Text('ລຶບບໍ່ໄດ້'),
           content: Text('$e'.replaceFirst('Exception: ', '')),
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
@@ -167,8 +166,8 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalStock = _products.fold<double>(0, (sum, p) => sum + p.stockQty);
-    final lowStockCount = _products.where((p) => p.stockQty > 0 && p.stockQty <= 5).length;
+    final totalStock = _products.fold<double>(0, (sum, p) => sum +p.stockQty);
+    final lowStockCount = _products.where((p) => p.stockQty > 0 &&p.stockQty <= 5).length;
     final outOfStockCount = _products.where((p) => p.stockQty <= 0).length;
 
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -179,12 +178,12 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            '${widget.store.storeName} — Stock Summary',
+            '${widget.store.storeName} — ສະຫຼຸບສາງສິນຄ້າ',
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            'Tap a product to see its full stock movement history.',
+            'ແຕະສິນຄ້າເພື່ອເບິ່ງປະຫວັດການເຄື່ອນໄຫວສາງທັງໝົດ.',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -192,17 +191,17 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
                   // ---- Totals row ----
                   Row(
                     children: [
-                      Expanded(child: _buildStatCard('ລວມສິນຄ້າ', '${_products.length}', const Color(AppColors.primaryValue))), // Total products
+                      Expanded(child: _buildStatCard('ລວມສິນຄ້າ', '${_products.length}', const Color(AppColors.primaryValue))),
                       const SizedBox(width: 10),
-                      Expanded(child: _buildStatCard('ຄົງເຫຼືອທັງໝົດ', totalStock.toStringAsFixed(0), const Color(AppColors.primaryValue))), // Total remaining
+                      Expanded(child: _buildStatCard('ຄົງເຫຼືອທັງໝົດ', totalStock.toStringAsFixed(0), const Color(AppColors.primaryValue))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: _buildStatCard('ໃກ້ໝົດ', '$lowStockCount', const Color(AppColors.warningValue))), // Low stock
+                      Expanded(child: _buildStatCard('ໃກ້ໝົດ', '$lowStockCount', const Color(AppColors.warningValue))),
                       const SizedBox(width: 10),
-                      Expanded(child: _buildStatCard('ໝົດແລ້ວ', '$outOfStockCount', const Color(AppColors.errorValue))), // Out of stock
+                      Expanded(child: _buildStatCard('ໝົດແລ້ວ', '$outOfStockCount', const Color(AppColors.errorValue))),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -211,7 +210,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
                   if (_products.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(child: Text('No products yet.')),
+                      child: Center(child: Text('ຍັງບໍ່ມີສິນຄ້າ.')),
                     )
                   else
                     ..._products.map(_buildProductRow),
@@ -296,7 +295,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
                       ),
                       if (!p.isActive) ...[
                         const SizedBox(height: 2),
-                        Text('Hidden', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        Text('ຖືກເຊື່ອງ', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                       ],
                     ],
                   ),
@@ -324,7 +323,7 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: stockColor),
                               ),
                               Text(
-                                isOut ? 'ໝົດ' : (isLow ? 'ໃກ້ໝົດ' : 'ຄົງເຫຼືອ'), // out / low / remaining
+                                isOut ? 'ໝົດ' : (isLow ? 'ໃກ້ໝົດ' : 'ຄົງເຫຼືອ'),
                                 style: TextStyle(fontSize: 10, color: stockColor),
                               ),
                             ],
@@ -336,9 +335,9 @@ class _SellerStockSummaryScreenState extends State<SellerStockSummaryScreen> {
               const SizedBox(width: 8),
               IconButton(
                 icon: _deleting.contains(p.id)
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(width: 16, height: 16, child:CircularProgressIndicator(strokeWidth: 2))
                     : Icon(Icons.delete_outline, size: 20, color: Colors.grey.shade600),
-                tooltip: 'ລຶບສິນຄ້າ', // Delete product
+                tooltip: 'ລຶບສິນຄ້າ',
                 onPressed: busy ? null : () => _deleteProduct(p),
               ),
             ],

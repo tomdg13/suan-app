@@ -9,51 +9,44 @@ import 'views/seller_store_profile_view.dart';
 import 'views/seller_products_view.dart';
 import 'views/seller_orders_view.dart';
 import 'views/seller_stock_summary_screen.dart';
-
 // Below this width, the permanent sidebar becomes a Drawer (hamburger menu)
 // instead of squeezing the content panel. Matches the breakpoint used on
 // the product detail screen for consistency.
 const double _kMobileBreakpoint = 700;
-
 class SellerShellScreen extends StatefulWidget {
   const SellerShellScreen({super.key});
   @override
   State<SellerShellScreen> createState() => _SellerShellScreenState();
 }
-
 class _SellerShellScreenState extends State<SellerShellScreen> {
   final _storeService = StoreService();
   int _selected = 0;
   Store? _selectedStore;
   bool _loadingStore = true;
-
   static const _groups = [
-    NavGroup(title: 'My Store', items: [
-      NavItem(label: 'Store Profile', icon: Icons.badge, index: 0),
+    NavGroup(title: 'ຮ້ານຂອງຂ້ອຍ', items: [
+      NavItem(label: 'ໂປຣໄຟລ໌ຮ້ານ', icon: Icons.badge, index: 0),
     ]),
-    NavGroup(title: 'Management', items: [
-      NavItem(label: 'Products', icon: Icons.inventory_2, index: 1),
-      NavItem(label: 'Stock Summary', icon: Icons.bar_chart, index: 3),
-      NavItem(label: 'Orders', icon: Icons.receipt_long, index: 2),
+    NavGroup(title: 'ຈັດການ', items: [
+      NavItem(label: 'ສິນຄ້າ', icon: Icons.inventory_2, index: 1),
+      NavItem(label: 'ສະຫຼຸບສາງ', icon: Icons.bar_chart, index: 3),
+      NavItem(label: 'ຄໍາສັ່ງຊື້', icon: Icons.receipt_long, index: 2),
     ]),
   ];
-
   // Labels for the bottom nav bar (mobile only). Stock Summary isn't
   // pinned here (4 items is already the practical max before it feels
   // cramped) — it's still reachable via the Drawer.
   static const _bottomNavItems = [
-    BottomNavigationBarItem(icon: Icon(Icons.badge), label: 'Store'),
-    BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Products'),
-    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
+    BottomNavigationBarItem(icon: Icon(Icons.badge), label: 'ຮ້ານຄ້າ'),
+    BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'ສິນຄ້າ'),
+    BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'ຄໍາສັ່ງຊື້'),
   ];
   static const _bottomNavIndices = [0, 1, 2]; // maps bottom-bar position -> _selected index
-
   @override
   void initState() {
     super.initState();
     _loadStore();
   }
-
   // Stores are now auto-created on becoming a seller, so the shell just
   // loads whichever one they own on open — no manual "create/switch"
   // step needed for the common single-store case.
@@ -65,7 +58,6 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       _loadingStore = false;
     });
   }
-
   Future<void> _logout() async {
     await context.read<AppState>().logout();
     if (!mounted) return;
@@ -74,7 +66,6 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       (route) => false,
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final views = [
@@ -86,30 +77,26 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
       SellerOrdersView(store: _selectedStore),
       _selectedStore != null
           ? SellerStockSummaryScreen(store: _selectedStore!)
-          : const Center(child: Text('Select or create a store first.')),
+          : const Center(child: Text('ກະລຸນາເລືອກ ຫຼື ສ້າງຮ້ານຄ້າກ່ອນ.')),
     ];
-
     final content = _loadingStore
         ? const Center(child: CircularProgressIndicator())
         : IndexedStack(
             index: _selected,
             children: views,
           );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < _kMobileBreakpoint;
-
         if (isMobile) {
           // ---- MOBILE: sidebar moves into a Drawer, content gets full width,
           // and a bottom nav bar gives quick access without opening the drawer.
           final bottomNavPosition = _bottomNavIndices.contains(_selected)
               ? _bottomNavIndices.indexOf(_selected)
               : 0;
-
           return Scaffold(
             appBar: AppBar(
-              title: Text(_selectedStore?.storeName ?? 'Seller Panel'),
+              title: Text(_selectedStore?.storeName ?? 'ແຜງຄວບຄຸມຜູ້ຂາຍ'),
             ),
             drawer: Drawer(
               child: SafeArea(
@@ -120,7 +107,7 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
                     setState(() => _selected = i);
                     Navigator.of(context).pop(); // close drawer after picking
                   },
-                  headerTitle: _selectedStore?.storeName ?? 'Seller Panel',
+                  headerTitle: _selectedStore?.storeName ?? 'ແຜງຄວບຄຸມຜູ້ຂາຍ',
                   headerIcon: Icons.storefront,
                   onLogout: _logout,
                 ),
@@ -135,7 +122,6 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
             ),
           );
         }
-
         // ---- WEB / WIDE: original permanent sidebar layout ----
         return Scaffold(
           body: Row(
@@ -144,7 +130,7 @@ class _SellerShellScreenState extends State<SellerShellScreen> {
                 groups: _groups,
                 selectedIndex: _selected,
                 onSelect: (i) => setState(() => _selected = i),
-                headerTitle: _selectedStore?.storeName ?? 'Seller Panel',
+                headerTitle: _selectedStore?.storeName ?? 'ແຜງຄວບຄຸມຜູ້ຂາຍ',
                 headerIcon: Icons.storefront,
                 onLogout: _logout,
               ),

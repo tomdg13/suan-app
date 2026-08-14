@@ -12,36 +12,29 @@ import '../../../services/catalog_service.dart';
 import '../../../services/upload_service.dart';
 import '../../../services/api_client.dart';
 import '../../../utils/image_compress.dart';
-
 // Below this width the header stacks (title above the button instead of
-// side-by-side) and product cards switch to a compact layout that doesn't
+// side-by-side) and product cards switch to a compact layout thatdoesn't
 // squeeze the "Stock: N · N photo(s)" line into a single narrow column.
 const double _kMobileBreakpoint = 700;
-
 class SellerProductsView extends StatefulWidget {
   final Store? store;
   const SellerProductsView({super.key, required this.store});
-
   @override
   State<SellerProductsView> createState() => _SellerProductsViewState();
 }
-
 class _SellerProductsViewState extends State<SellerProductsView> {
   final _productService = ProductService();
   List<Product> _products = [];
   bool _loading = true;
-
   int _page = 1;
   int _limit = 10;
   int _total = 0;
   final _goToCtrl = TextEditingController();
-
   @override
   void initState() {
     super.initState();
     _load();
   }
-
   @override
   void didUpdateWidget(covariant SellerProductsView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -50,7 +43,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       _load();
     }
   }
-
   Future<void> _load() async {
     if (widget.store == null) {
       setState(() => _loading = false);
@@ -72,14 +64,12 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       _loading = false;
     });
   }
-
   void _goToPage(int page) {
     final maxPage = _total == 0 ? 1 : (_total / _limit).ceil();
     if (page < 1 || page > maxPage) return;
     setState(() => _page = page);
     _load();
   }
-
   void _changeLimit(int newLimit) {
     setState(() {
       _limit = newLimit;
@@ -87,12 +77,10 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     });
     _load();
   }
-
   Future<void> _toggleVisibility(Product product) async {
     await _productService.updateProduct(product.id, isActive: !product.isActive);
     _load();
   }
-
   // Quick stock +/- straight from the product card — no need to open the
   void _openAddProductSheet() {
     showModalBottomSheet(
@@ -104,7 +92,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ),
     );
   }
-
   void _openEditProductSheet(Product product) {
     showModalBottomSheet(
       context: context,
@@ -119,7 +106,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ),
     );
   }
-
   void _openManageImages(Product product) {
     showModalBottomSheet(
       context: context,
@@ -130,25 +116,20 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ),
     );
   }
-
   String? _fullImageUrl(String? path) {
     if (path == null) return null;
     return '${ApiConfig.mediaBaseUrl}$path';
   }
-
   @override
   Widget build(BuildContext context) {
     final priceFormat = NumberFormat.decimalPattern('en_US');
-
     if (widget.store == null) {
-      return const Center(child: Text('Select or create a store first.'));
+      return const Center(child: Text('ກະລຸນາເລືອກ ຫຼື ສ້າງຮ້ານຄ້າກ່ອນ.'));
     }
     if (_loading) return const Center(child: CircularProgressIndicator());
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < _kMobileBreakpoint;
-
         return RefreshIndicator(
           onRefresh: _load,
           child: ListView(
@@ -156,7 +137,7 @@ class _SellerProductsViewState extends State<SellerProductsView> {
             children: [
               _buildHeader(isMobile),
               const SizedBox(height: 16),
-              if (_products.isEmpty) const Text('No products yet.'),
+              if (_products.isEmpty) const Text('ຍັງບໍ່ມີສິນຄ້າ.'),
               ..._products.map((p) => _buildProductCard(p, priceFormat, isMobile)),
               if (_total > 0) _buildPaginationBar(),
             ],
@@ -165,12 +146,11 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       },
     );
   }
-
   // ---- Header: title + Add Product button. Stacks on mobile instead of
   // overflowing off the right edge. ----
   Widget _buildHeader(bool isMobile) {
     final title = Text(
-      '${widget.store!.storeName} — Products',
+      '${widget.store!.storeName} — ສິນຄ້າ',
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
       overflow: TextOverflow.ellipsis,
       maxLines: isMobile ? 2 : 1,
@@ -178,9 +158,8 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     final addButton = FilledButton.icon(
       onPressed: _openAddProductSheet,
       icon: const Icon(Icons.add),
-      label: const Text('Add Product'),
+      label: const Text('ເພີ່ມສິນຄ້າ'),
     );
-
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -191,7 +170,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
         ],
       );
     }
-
     return Row(
       children: [
         Expanded(child: title),
@@ -200,7 +178,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ],
     );
   }
-
   // ---- Pagination bar: Total count, prev/next, page numbers with
   // truncation, N/page selector, and a "Go to" field. ----
   Widget _buildPaginationBar() {
@@ -212,7 +189,7 @@ class _SellerProductsViewState extends State<SellerProductsView> {
         spacing: 8,
         runSpacing: 8,
         children: [
-          Text('Total: $_total'),
+          Text('ທັງໝົດ: $_total'),
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: _page > 1 ? () => _goToPage(_page - 1) : null,
@@ -238,7 +215,7 @@ class _SellerProductsViewState extends State<SellerProductsView> {
           DropdownButton<int>(
             value: _limit,
             items: const [10, 20, 50, 100]
-                .map((n) => DropdownMenuItem(value: n, child: Text('$n / page')))
+                .map((n) => DropdownMenuItem(value: n, child: Text('$n / ໜ້າ')))
                 .toList(),
             onChanged: (v) {
               if (v != null) _changeLimit(v);
@@ -251,7 +228,7 @@ class _SellerProductsViewState extends State<SellerProductsView> {
               decoration: const InputDecoration(
                 isDense: true,
                 border: OutlineInputBorder(),
-                hintText: 'Go to',
+                hintText: 'ໄປໜ້າ',
               ),
               keyboardType: TextInputType.number,
               onSubmitted: (v) {
@@ -265,14 +242,12 @@ class _SellerProductsViewState extends State<SellerProductsView> {
       ),
     );
   }
-
   // ---- Product card: ListTile layout on wide screens (unchanged),
   // custom stacked layout on mobile so the subtitle line and action
   // icons both get enough room instead of being squeezed into one
   // vertical sliver. ----
   Widget _buildProductCard(Product p, NumberFormat priceFormat, bool isMobile) {
     final thumbUrl = p.imageUrls.isNotEmpty ? _fullImageUrl(p.imageUrls.first) : null;
-
     final thumb = SizedBox(
       width: 48,
       height: 48,
@@ -286,26 +261,23 @@ class _SellerProductsViewState extends State<SellerProductsView> {
               ),
       ),
     );
-
     final nameRow = Row(
       children: [
         Flexible(child: Text(p.nameLao, overflow: TextOverflow.ellipsis)),
         if (!p.isActive) ...[
           const SizedBox(width: 6),
           const Chip(
-            label: Text('Hidden', style: TextStyle(fontSize: 11)),
+            label: Text('ຖືກເຊື່ອງ', style: TextStyle(fontSize: 11)),
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ],
     );
-
     final photoCountLine = Text(
-      '${p.imageUrls.length} photo(s)',
+      '${p.imageUrls.length} ຮູບ',
       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
     );
-
     if (!isMobile) {
       // Unchanged desktop/web layout, with the stock adjuster added.
       return Opacity(
@@ -321,12 +293,12 @@ class _SellerProductsViewState extends State<SellerProductsView> {
                 Text('${priceFormat.format(p.basePrice)} ກີບ'),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit product',
+                  tooltip: 'ແກ້ໄຂສິນຄ້າ',
                   onPressed: () => _openEditProductSheet(p),
                 ),
                 IconButton(
                   icon: const Icon(Icons.photo_library_outlined, size: 20),
-                  tooltip: 'Manage photos',
+                  tooltip: 'ຈັດການຮູບພາບ',
                   onPressed: () => _openManageImages(p),
                 ),
                 Switch(
@@ -339,7 +311,6 @@ class _SellerProductsViewState extends State<SellerProductsView> {
         ),
       );
     }
-
     // ---- Mobile layout: image + name/photos on one row, stock
     // adjuster on its own row, price + action icons on the last row. ----
     return Opacity(
@@ -377,14 +348,14 @@ class _SellerProductsViewState extends State<SellerProductsView> {
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 20),
-                    tooltip: 'Edit product',
+                    tooltip: 'ແກ້ໄຂສິນຄ້າ',
                     onPressed: () => _openEditProductSheet(p),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.photo_library_outlined, size: 20),
-                    tooltip: 'Manage photos',
+                    icon: const Icon(Icons.photo_library_outlined,size: 20),
+                    tooltip: 'ຈັດການຮູບພາບ',
                     onPressed: () => _openManageImages(p),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -402,15 +373,12 @@ class _SellerProductsViewState extends State<SellerProductsView> {
     );
   }
 }
-
-/// Reusable strip of picked-but-not-yet-uploaded image thumbnails with
+/// Reusable strip of picked-but-not-yet-uploaded image thumbnailswith
 /// a remove (x) button on each — used while creating a new product.
 class _PickedImagesStrip extends StatelessWidget {
   final List<Uint8List> images;
   final ValueChanged<int> onRemove;
-
   const _PickedImagesStrip({required this.images, required this.onRemove});
-
   @override
   Widget build(BuildContext context) {
     if (images.isEmpty) return const SizedBox.shrink();
@@ -446,36 +414,29 @@ class _PickedImagesStrip extends StatelessWidget {
     );
   }
 }
-
 /// Single sheet used for BOTH creating a new product and editing an
 /// existing one. If [existingProduct] is null, it's create mode.
 class _ProductFormSheet extends StatefulWidget {
   final int storeId;
   final Product? existingProduct;
   final VoidCallback onSaved;
-
   const _ProductFormSheet({
     required this.storeId,
     this.existingProduct,
     required this.onSaved,
   });
-
   @override
   State<_ProductFormSheet> createState() => _ProductFormSheetState();
 }
-
 class _ProductFormSheetState extends State<_ProductFormSheet> {
   final _catalogService = CatalogService();
   final _productService = ProductService();
   final _uploadService = UploadService();
   final _imagePicker = ImagePicker();
-
   late final _nameCtrl = TextEditingController(text: widget.existingProduct?.nameLao ?? '');
   late final _descCtrl = TextEditingController(text: widget.existingProduct?.description ?? '');
   late final _priceCtrl = TextEditingController(
       text: widget.existingProduct != null ? widget.existingProduct!.basePrice.toStringAsFixed(0) : '');
-
-
   List<ProductCategory> _categories = [];
   List<ProductUnit> _units = [];
   int? _selectedCategoryId;
@@ -484,17 +445,13 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   bool _submitting = false;
   bool _pickingImages = false;
   String? _error;
-
   final List<Uint8List> _pickedImages = [];
-
   bool get _isEditMode => widget.existingProduct != null;
-
   @override
   void initState() {
     super.initState();
     _loadOptions();
   }
-
   Future<void> _loadOptions() async {
     final categories = await _catalogService.getCategories();
     final units = await _catalogService.getUnits();
@@ -512,21 +469,19 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       _loadingOptions = false;
     });
   }
-
   Future<void> _pickImages() async {
     setState(() => _pickingImages = true);
     try {
       final picked = await _imagePicker.pickMultiImage();
       for (final file in picked) {
         final bytes = await file.readAsBytes();
-        _pickedImages.add(compressImage(bytes, maxDimension: 1200, quality: 85));
+        _pickedImages.add(compressImage(bytes, maxDimension: 1200,quality: 85));
       }
       setState(() {});
     } finally {
       setState(() => _pickingImages = false);
     }
   }
-
   Future<void> _submit() async {
     if (_selectedCategoryId == null || _selectedUnitId == null) return;
     setState(() {
@@ -560,14 +515,12 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
         );
       }
-
       if (_pickedImages.isNotEmpty) {
         await _uploadService.uploadProductImages(
           productId: product.id,
           imagesBytes: _pickedImages,
         );
       }
-
       widget.onSaved();
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -577,7 +530,6 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       setState(() => _submitting = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -588,20 +540,20 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_isEditMode ? 'Edit Product' : 'Add Product',
+                  Text(_isEditMode ? 'ແກ້ໄຂສິນຄ້າ' : 'ເພີ່ມສິນຄ້າ',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _nameCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'Product name (Lao)', border: OutlineInputBorder()),
+                        labelText: 'ຊື່ສິນຄ້າ (ພາສາລາວ)', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _descCtrl,
                     maxLines: 3,
                     decoration: const InputDecoration(
-                      labelText: 'Description (details, freshness, origin, etc.)',
+                      labelText: 'ລາຍລະອຽດ (ຄຸນນະພາບ, ຄວາມສົດ, ແຫຼ່ງທີ່ມາ ແລະ ອື່ນໆ)',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -609,7 +561,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                   DropdownButtonFormField<int>(
                     initialValue: _selectedCategoryId,
                     decoration:
-                        const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                        const InputDecoration(labelText: 'ໝວດໝູ່', border: OutlineInputBorder()),
                     items: _categories
                         .map((c) => DropdownMenuItem(value: c.id, child: Text(c.nameLao)))
                         .toList(),
@@ -624,7 +576,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                           controller: _priceCtrl,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                              labelText: 'Price (LAK)', border: OutlineInputBorder()),
+                              labelText: 'ລາຄາ (ກີບ)', border: OutlineInputBorder()),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -632,7 +584,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         child: DropdownButtonFormField<int>(
                           initialValue: _selectedUnitId,
                           decoration: const InputDecoration(
-                              labelText: 'per', border: OutlineInputBorder()),
+                              labelText: 'ຕໍ່', border: OutlineInputBorder()),
                           items: _units
                               .map((u) => DropdownMenuItem(
                                   value: u.id, child: Text(u.code)))
@@ -647,7 +599,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'e.g. select "g" to sell by the gram, "kg" by the kilogram, or "piece" for whole items',
+                        'ຕົວຢ່າງ: ເລືອກ "g" ເພື່ອຂາຍເປັນກຣາມ, "kg" ເປັນກິໂລ, ຫຼື "piece" ສຳລັບຂາຍເປັນຫົວ/ອັນ',
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
                     ),
@@ -657,8 +609,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       _isEditMode
-                          ? 'Add more photos (${_pickedImages.length})'
-                          : 'Photos (${_pickedImages.length})',
+                          ? 'ເພີ່ມຮູບເພີ່ມເຕີມ (${_pickedImages.length})'
+                          : 'ຮູບພາບ (${_pickedImages.length})',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -674,7 +626,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         ? const SizedBox(
                             width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.add_photo_alternate_outlined),
-                    label: Text(_pickedImages.isEmpty ? 'Add photos' : 'Add more photos'),
+                    label: Text(_pickedImages.isEmpty ? 'ເພີ່ມຮູບພາບ' : 'ເພີ່ມຮູບອື່ນ'),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
@@ -688,7 +640,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                       child: _submitting
                           ? const SizedBox(
                               height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(_isEditMode ? 'Save changes' : 'Save product'),
+                          : Text(_isEditMode ? 'ບັນທຶກການປ່ຽນແປງ' : 'ບັນທຶກສິນຄ້າ'),
                     ),
                   ),
                 ],
@@ -697,33 +649,26 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     );
   }
 }
-
 /// Sheet for adding/removing photos on an EXISTING product.
 class _ManageImagesSheet extends StatefulWidget {
   final Product product;
   final VoidCallback onChanged;
   const _ManageImagesSheet({required this.product, required this.onChanged});
-
   @override
   State<_ManageImagesSheet> createState() => _ManageImagesSheetState();
 }
-
 class _ManageImagesSheetState extends State<_ManageImagesSheet> {
   final _uploadService = UploadService();
   final _imagePicker = ImagePicker();
-
   late List<ProductImageInfo> _images;
   bool _busy = false;
   String? _error;
-
   @override
   void initState() {
     super.initState();
     _images = List.of(widget.product.images);
   }
-
   String _fullUrl(String path) => '${ApiConfig.mediaBaseUrl}$path';
-
   Future<void> _addPhotos() async {
     setState(() {
       _busy = true;
@@ -732,13 +677,11 @@ class _ManageImagesSheetState extends State<_ManageImagesSheet> {
     try {
       final picked = await _imagePicker.pickMultiImage();
       if (picked.isEmpty) return;
-
       final bytesList = <Uint8List>[];
       for (final file in picked) {
         final bytes = await file.readAsBytes();
         bytesList.add(compressImage(bytes, maxDimension: 1200, quality: 85));
       }
-
       final updated = await _uploadService.uploadProductImages(
         productId: widget.product.id,
         imagesBytes: bytesList,
@@ -751,7 +694,6 @@ class _ManageImagesSheetState extends State<_ManageImagesSheet> {
       setState(() => _busy = false);
     }
   }
-
   Future<void> _removePhoto(ProductImageInfo image) async {
     setState(() {
       _busy = true;
@@ -767,7 +709,6 @@ class _ManageImagesSheetState extends State<_ManageImagesSheet> {
       setState(() => _busy = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -775,18 +716,18 @@ class _ManageImagesSheetState extends State<_ManageImagesSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${widget.product.nameLao} — Photos',
+          Text('${widget.product.nameLao} — ຮູບພາບ',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           if (_images.isEmpty)
-            const Text('No photos yet.')
+            const Text('ຍັງບໍ່ມີຮູບພາບ.')
           else
             SizedBox(
               height: 90,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _images.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, __) => const SizedBox(width:8),
                 itemBuilder: (context, index) {
                   final image = _images[index];
                   return Stack(
@@ -828,7 +769,7 @@ class _ManageImagesSheetState extends State<_ManageImagesSheet> {
                   ? const SizedBox(
                       width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Add more photos'),
+              label: const Text('ເພີ່ມຮູບອື່ນ'),
             ),
           ),
         ],
