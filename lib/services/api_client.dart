@@ -104,6 +104,19 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> put(String path, Map<String, dynamic> body, {bool auth = false}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    debugPrint('[API] PUT $uri body: ${jsonEncode(body)}');
+    try {
+      final res = await http.put(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+      return _handle('PUT', uri, res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      debugPrint('[API] NETWORK ERROR PUT $uri -> $e');
+      throw ApiException('Could not reach server at $uri. Is the backend running and is the URL in constants.dart correct?');
+    }
+  }
+
   Future<dynamic> delete(String path, {bool auth = false}) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     try {

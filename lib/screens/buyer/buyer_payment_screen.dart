@@ -8,6 +8,7 @@ import '../../models/user_address.dart';
 import '../../services/address_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/payment_qr_service.dart';
+import '../../services/logistics_provider_service.dart';
 import 'location_picker_screen.dart';
 import 'payment_proof_screen.dart';
 
@@ -21,7 +22,7 @@ import 'payment_proof_screen.dart';
 //  2. Load the admin's currently active payment QR (LAPNet / LAO QR Pay)
 //     and show it alongside the order total.
 //  3. Buyer scans the QR in their own banking app and pays externally.
-//  4. Buyer taps "I've Paid" -> calls POST /orders/checkout with
+//  4. Buyer taps "ຂ້ອຍຈ່າຍແລ້ວ" -> calls POST /orders/checkout with
 //     paymentMethod: qr_pay. This creates the order (status: pending,
 //     paymentStatus: unpaid) from their current cart. There is no
 //     automatic payment verification on the backend yet — an admin
@@ -61,13 +62,10 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   String? _qrImageUrl;
   bool _confirming = false;
 
-  // Delivery choice. "Anousith Logistic" and "Standard Delivery" are both
-  // DeliveryMethod.delivery under the hood, just with a different courier
-  // name attached — "Store Pickup" is DeliveryMethod.pickup, no courier.
-  static const _deliveryOptions = <String>['Anousith Logistic', 'Standard Delivery', 'Store Pickup'];
-  String _selectedDeliveryOption = _deliveryOptions.first;
+  final _logisticsService = LogisticsProviderService();
+  List<LogisticsProvider> _deliveryOptions = [];
+  int? _selectedDeliveryOptionId;
 
-  // Quick add-address form controllers.
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _lineCtrl = TextEditingController();
@@ -103,7 +101,6 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
     });
     try {
       if (widget.existingOrderId != null) {
-        // Paying an existing order — only need the QR, no address/cart work.
         final qrUrl = await _qrService.fetchCurrentQr();
         if (!mounted) return;
         setState(() {
@@ -116,9 +113,11 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       final results = await Future.wait([
         _addressService.findMine(),
         _qrService.fetchCurrentQr(),
+        _logisticsService.fetchActive(),
       ]);
       final addresses = results[0] as List<UserAddress>;
       final qrUrl = results[1] as String?;
+      final providers = results[2] as List<LogisticsProvider>;
 
       if (!mounted) return;
       setState(() {
@@ -128,12 +127,14 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
             : null;
         _showAddAddressForm = addresses.isEmpty;
         _qrImageUrl = qrUrl;
+        _deliveryOptions = providers;
+        _selectedDeliveryOptionId = providers.isNotEmpty ? providers.first.id : null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadError = 'Failed to load: $e';
+        _loadError = 'ໂຫຼດຂໍ້ມູນບໍ່ສຳເລັດ: $e';
         _loading = false;
       });
     }
@@ -142,23 +143,21 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   Future<void> _useCurrentLocation() async {
     setState(() => _locating = true);
     try {
-      // 1. Make sure location services + permission are actually available.
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are turned off. Please enable GPS.');
+        throw Exception('ການບໍລິການ GPS ປິດຢູ່. ກະລຸນາເປີດໃຊ້ງານກ່ອນ.');
       }
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Location permission denied.');
+          throw Exception('ການອະນຸຍາດໃຊ້ຕຳແໜ່ງຖືກປະຕິເສດ.');
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permission permanently denied. Enable it in device settings.');
+        throw Exception('ການອະນຸຍາດໃຊ້ຕຳແໜ່ງຖືກປະຕິເສດຖາວອນ. ກະລຸນາເປີດໃຊ້ງານໃນການຕັ້ງຄ່າອຸປະກອນ.');
       }
 
-      // 2. Get the current GPS position, to use as the map's starting point.
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -166,9 +165,6 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       if (!mounted) return;
       setState(() => _locating = false);
 
-      // 3. Open the map so the buyer can fine-tune the exact pin — GPS
-      //    accuracy alone (especially indoors/on web) is often off by
-      //    tens of meters, so let them drag to the real front door.
       final confirmed = await Navigator.of(context).push<latlong.LatLng>(
         MaterialPageRoute(
           builder: (_) => LocationPickerScreen(
@@ -176,13 +172,8 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           ),
         ),
       );
-      if (confirmed == null || !mounted) return; // buyer backed out of the map
+      if (confirmed == null || !mounted) return;
 
-      // 4. Reverse-geocode the CONFIRMED pin (not the raw GPS point) to
-      //    fill in village/district/province/address automatically. If
-      //    this fails (e.g. web platform limitations, or the point is
-      //    somewhere with no address data), we still keep the
-      //    coordinates — the buyer can type the address fields by hand.
       try {
         final geocoding = Geocoding();
         final placemarks = await geocoding.placemarkFromCoordinates(
@@ -202,8 +193,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           });
         }
       } catch (_) {
-        // Non-fatal — reverse geocoding isn't available on every platform
-        // (e.g. Flutter Web needs extra setup). Coordinates are still saved.
+        // ບໍ່ຮ້າຍແຮງ — reverse geocoding ອາດບໍ່ມີໃນທຸກ platform
       }
 
       if (!mounted) return;
@@ -212,13 +202,13 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _pickedLongitude = confirmed.longitude;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location captured')),
+        const SnackBar(content: Text('ບັນທຶກຕຳແໜ່ງສຳເລັດ')),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _locating = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not get location: $e')),
+        SnackBar(content: Text('ບໍ່ສາມາດດຶງຕຳແໜ່ງໄດ້: $e')),
       );
     }
   }
@@ -228,7 +218,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _phoneCtrl.text.trim().isEmpty ||
         _lineCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name, phone, and address are required')),
+        const SnackBar(content: Text('ກະລຸນາປ້ອນຊື່, ເບີໂທ ແລະ ທີ່ຢູ່')),
       );
       return;
     }
@@ -256,14 +246,12 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       if (!mounted) return;
       setState(() => _savingAddress = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save address: $e')),
+        SnackBar(content: Text('ບໍ່ສາມາດບັນທຶກທີ່ຢູ່ໄດ້: $e')),
       );
     }
   }
 
   Future<void> _confirmPaid() async {
-    // Paying an EXISTING order — skip checkout entirely, go straight to
-    // uploading proof for that order.
     if (widget.existingOrderId != null) {
       setState(() => _confirming = true);
       if (!mounted) return;
@@ -278,27 +266,26 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
 
     if (_selectedAddressId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add or select a delivery address first')),
+        const SnackBar(content: Text('ກະລຸນາເພີ່ມ ຫຼື ເລືອກທີ່ຢູ່ຈັດສົ່ງກ່ອນ')),
       );
       return;
     }
     setState(() => _confirming = true);
     try {
-      final isPickup = _selectedDeliveryOption == 'Store Pickup';
+      final selectedProvider = _deliveryOptions.firstWhere(
+        (p) => p.id == _selectedDeliveryOptionId,
+        orElse: () => _deliveryOptions.first,
+      );
+      final isPickup = selectedProvider.type == 'store_pickup';
       final result = await _ordersService.checkout(
         addressId: _selectedAddressId!,
         paymentMethod: PaymentMethod.qrPay,
         deliveryMethod: isPickup ? DeliveryMethod.pickup : DeliveryMethod.delivery,
-        courierName: isPickup ? null : _selectedDeliveryOption,
+        courierName: isPickup ? null : selectedProvider.name,
       );
       if (!mounted) return;
       setState(() => _confirming = false);
 
-      // Backend returns a LIST (one order per store in the cart). A
-      // single QR payment covers ALL of them together, so the proof +
-      // RRN needs to be attached to every order created here, not just
-      // the first — otherwise stores after the first stay stuck at
-      // "unpaid" even though the buyer already paid for everything.
       final orders = result is List ? result : [result];
       if (orders.isEmpty) {
         Navigator.of(context).pop(result);
@@ -310,24 +297,19 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           .toList();
 
       if (orderIds.isEmpty) {
-        // Shouldn't happen, but don't strand the buyer if it does.
         Navigator.of(context).pop(result);
         return;
       }
 
-      // Send them straight into the payment-proof upload step so the
-      // RRN gets captured while it's still fresh in their banking app.
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => PaymentProofScreen(orderIds: orderIds)),
       );
-      // PaymentProofScreen now navigates to PaymentSuccessScreen itself on
-      // success (via pushReplacement), so no need to pop back here.
     } catch (e) {
       if (!mounted) return;
       setState(() => _confirming = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not place order: $e')),
+        SnackBar(content: Text('ບໍ່ສາມາດສ້າງອໍເດີໄດ້: $e')),
       );
     }
   }
@@ -342,7 +324,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         surfaceTintColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black87),
         title: const Text(
-          'Pay with QR',
+          'ຈ່າຍດ້ວຍ QR',
           style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -383,7 +365,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           children: [
             Text(_loadError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: _load, child: const Text('Retry')),
+            OutlinedButton(onPressed: _load, child: const Text('ລອງໃໝ່')),
           ],
         ),
       ),
@@ -497,11 +479,9 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const Text('ທີ່ຢູ່ຈັດສົ່ງ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             const SizedBox(height: 10),
 
-            // GPS button — fills the fields below automatically when
-            // possible; coordinates are saved either way.
             SizedBox(
               height: 40,
               child: OutlinedButton.icon(
@@ -518,29 +498,29 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.my_location, size: 16),
-                label: Text(_locating ? 'Getting location...' : 'Pin location on map'),
+                label: Text(_locating ? 'ກຳລັງດຶງຕຳແໜ່ງ...' : 'ປັກໝຸດຕຳແໜ່ງໃນແຜນທີ່'),
               ),
             ),
             if (_pickedLatitude != null) ...[
               const SizedBox(height: 6),
               Text(
-                'Location: ${_pickedLatitude!.toStringAsFixed(5)}, ${_pickedLongitude!.toStringAsFixed(5)}',
+                'ຕຳແໜ່ງ: ${_pickedLatitude!.toStringAsFixed(5)}, ${_pickedLongitude!.toStringAsFixed(5)}',
                 style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
               ),
             ],
             const SizedBox(height: 10),
 
-            _addressField(_nameCtrl, 'Recipient name'),
+            _addressField(_nameCtrl, 'ຊື່ຜູ້ຮັບ'),
             const SizedBox(height: 8),
-            _addressField(_phoneCtrl, 'Phone', keyboardType: TextInputType.phone),
+            _addressField(_phoneCtrl, 'ເບີໂທ', keyboardType: TextInputType.phone),
             const SizedBox(height: 8),
-            _addressField(_lineCtrl, 'Address (street, house no.)'),
+            _addressField(_lineCtrl, 'ທີ່ຢູ່ (ຖະໜົນ, ເລກທີ່ເຮືອນ)'),
             const SizedBox(height: 8),
-            _addressField(_villageCtrl, 'Village (optional)'),
+            _addressField(_villageCtrl, 'ບ້ານ (ບໍ່ບັງຄັບ)'),
             const SizedBox(height: 8),
-            _addressField(_districtCtrl, 'District (optional)'),
+            _addressField(_districtCtrl, 'ເມືອງ (ບໍ່ບັງຄັບ)'),
             const SizedBox(height: 8),
-            _addressField(_provinceCtrl, 'Province (optional)'),
+            _addressField(_provinceCtrl, 'ແຂວງ (ບໍ່ບັງຄັບ)'),
             const SizedBox(height: 12),
             SizedBox(
               height: 42,
@@ -550,7 +530,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 ),
                 onPressed: _savingAddress ? null : _saveAddress,
-                child: Text(_savingAddress ? 'Saving...' : 'Save Address'),
+                child: Text(_savingAddress ? 'ກຳລັງບັນທຶກ...' : 'ບັນທຶກທີ່ຢູ່'),
               ),
             ),
           ],
@@ -569,7 +549,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         children: [
           Row(
             children: [
-              const Text('Deliver to', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text('ສົ່ງໃຫ້', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const Spacer(),
               TextButton(
                 onPressed: () => setState(() {
@@ -583,7 +563,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                   _districtCtrl.clear();
                   _provinceCtrl.clear();
                 }),
-                child: const Text('+ Add new'),
+                child: const Text('+ ເພີ່ມທີ່ຢູ່ໃໝ່'),
               ),
             ],
           ),
@@ -624,23 +604,26 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Delivery Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          ..._deliveryOptions.map((option) => RadioListTile<String>(
-                value: option,
-                groupValue: _selectedDeliveryOption,
-                onChanged: (v) => setState(() => _selectedDeliveryOption = v!),
+          const Text('ວິທີການຈັດສົ່ງ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          if (_deliveryOptions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('ບໍ່ມີວິທີການຈັດສົ່ງໃຫ້ເລືອກ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ),
+          ..._deliveryOptions.map((option) => RadioListTile<int>(
+                value: option.id,
+                groupValue: _selectedDeliveryOptionId,
+                onChanged: (v) => setState(() => _selectedDeliveryOptionId = v),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 activeColor: const Color(AppColors.primaryValue),
-                title: Text(option, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                subtitle: Text(
-                  option == 'Store Pickup'
-                      ? 'Collect your order from the store'
-                      : option == 'Anousith Logistic'
-                          ? 'Delivered by Anousith Logistic courier'
-                          : 'Standard delivery to your address',
-                  style: const TextStyle(fontSize: 12),
+                title: Text(
+                  option.name,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
+                subtitle: option.description != null
+                    ? Text(option.description!, style: const TextStyle(fontSize: 12))
+                    : null,
               )),
         ],
       ),
@@ -656,7 +639,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       ),
       child: Column(
         children: [
-          const Text('Scan to Pay', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text('ສະແກນເພື່ອຈ່າຍ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 12),
           Container(
             width: 240,
@@ -673,7 +656,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text(
-                        'No payment QR has been set up yet.\nPlease contact support.',
+                        'ຍັງບໍ່ມີ QR ການຊຳລະ.\nກະລຸນາຕິດຕໍ່ທີມງານ.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
@@ -682,7 +665,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Open your banking app, scan this QR, and pay the amount above.',
+            'ເປີດແອັບທະນາຄານ, ສະແກນ QR ນີ້ ແລະ ຈ່າຍຕາມຍອດຂ້າງເທິງ.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
@@ -702,7 +685,9 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         ),
         onPressed: (_confirming || _qrImageUrl == null) ? null : _confirmPaid,
         child: Text(
-          _confirming ? (widget.existingOrderId != null ? 'Loading...' : 'Placing order...') : "I've Paid",
+          _confirming
+              ? (widget.existingOrderId != null ? 'ກຳລັງໂຫຼດ...' : 'ກຳລັງສ້າງອໍເດີ...')
+              : 'ຂ້ອຍຈ່າຍແລ້ວ',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),

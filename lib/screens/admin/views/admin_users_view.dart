@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../config/constants.dart';
 import '../../../models/admin_user.dart';
 import '../../../services/user_service.dart';
 import '../../../services/api_client.dart';
@@ -188,12 +189,18 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   }
 
   Widget _buildUserCard(AdminUser user, bool isMobile) {
+    final hasAvatar = user.avatarUrl != null && user.avatarUrl!.isNotEmpty;
     final avatar = CircleAvatar(
       backgroundColor: _roleColor(user.role),
-      child: Text(
-        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-        style: const TextStyle(color: Colors.white),
-      ),
+      backgroundImage: hasAvatar
+          ? NetworkImage('\${ApiConfig.mediaBaseUrl}\${user.avatarUrl}')
+          : null,
+      child: hasAvatar
+          ? null
+          : Text(
+              user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+              style: const TextStyle(color: Colors.white),
+            ),
     );
 
     final roleDropdown = DropdownButton<String>(

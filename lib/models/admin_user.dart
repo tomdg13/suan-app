@@ -5,6 +5,7 @@ class AdminUser {
   final String? email;
   final String role;
   final int isActive;
+  final String? avatarUrl;
 
   AdminUser({
     required this.id,
@@ -13,6 +14,7 @@ class AdminUser {
     this.email,
     required this.role,
     required this.isActive,
+    this.avatarUrl,
   });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class AdminUser {
       email: json['email'],
       role: json['role'] ?? 'buyer',
       isActive: json['isActive'] ?? 1,
+      avatarUrl: json['avatarUrl'],
     );
   }
 }
