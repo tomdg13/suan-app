@@ -154,32 +154,41 @@ class _BuyerProfileScreenState extends State<BuyerProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _OrderStatusIcon(
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'ລໍຈ່າຍເງິນ',
-                          onTap: () => _openOrders(context, OrderStatusFilter.toPay),
+                        Expanded(
+                          child: _OrderStatusIcon(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: 'ລໍຈ່າຍເງິນ',
+                            onTap: () => _openOrders(context, OrderStatusFilter.toPay),
+                          ),
                         ),
-                        _OrderStatusIcon(
-                          icon: Icons.inventory_2_outlined,
-                          label: 'ລໍຈັດສົ່ງ',
-                          onTap: () => _openOrders(context, OrderStatusFilter.toShip),
+                        Expanded(
+                          child: _OrderStatusIcon(
+                            icon: Icons.inventory_2_outlined,
+                            label: 'ລໍຈັດສົ່ງ',
+                            onTap: () => _openOrders(context, OrderStatusFilter.toShip),
+                          ),
                         ),
-                        _OrderStatusIcon(
-                          icon: Icons.local_shipping_outlined,
-                          label: 'ລໍຮັບເຄື່ອງ',
-                          onTap: () => _openOrders(context, OrderStatusFilter.toReceive),
+                        Expanded(
+                          child: _OrderStatusIcon(
+                            icon: Icons.local_shipping_outlined,
+                            label: 'ລໍຮັບເຄື່ອງ',
+                            onTap: () => _openOrders(context, OrderStatusFilter.toReceive),
+                          ),
                         ),
-                        _OrderStatusIcon(
-                          icon: Icons.rate_review_outlined,
-                          label: 'ໃຫ້ຄະແນນ',
-                          onTap: () => _openOrders(context, OrderStatusFilter.toReview),
+                        Expanded(
+                          child: _OrderStatusIcon(
+                            icon: Icons.rate_review_outlined,
+                            label: 'ໃຫ້ຄະແນນ',
+                            onTap: () => _openOrders(context, OrderStatusFilter.toReview),
+                          ),
                         ),
-                        _OrderStatusIcon(
-                          icon: Icons.assignment_return_outlined,
-                          label: 'ຄືນເຄື່ອງ',
-                          onTap: () => _openOrders(context, OrderStatusFilter.returns),
+                        Expanded(
+                          child: _OrderStatusIcon(
+                            icon: Icons.assignment_return_outlined,
+                            label: 'ຄືນເຄື່ອງ',
+                            onTap: () => _openOrders(context, OrderStatusFilter.returns),
+                          ),
                         ),
                       ],
                     ),

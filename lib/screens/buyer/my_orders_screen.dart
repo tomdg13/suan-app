@@ -76,27 +76,27 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
   ({Color bg, Color fg, String label}) _statusStyle(OrderModel order) {
     if (order.status == 'cancelled') {
-      return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'Cancelled');
+      return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'ຍົກເລີກ');
     }
     if (order.paymentStatus == 'refunded') {
-      return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'Refunded');
+      return (bg: const Color(0xFFFDECEC), fg: const Color(AppColors.errorValue), label: 'ຄືນເງິນແລ້ວ');
     }
     if (order.paymentStatus == 'unpaid') {
       if (order.proofSubmitted) {
         // Buyer already paid and submitted proof — just waiting on an
         // admin to confirm it. Distinct from "hasn't paid at all".
-        return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'Payment Submitted');
+        return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'ສົ່ງຫຼັກຖານແລ້ວ');
       }
-      return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'To pay');
+      return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'ລໍຈ່າຍເງິນ');
     }
     // paymentStatus == 'paid' from here — show real fulfillment status.
     if (order.status == 'delivered') {
-      return (bg: const Color(0xFFE9F7EF), fg: const Color(AppColors.primaryValue), label: 'Delivered');
+      return (bg: const Color(0xFFE9F7EF), fg: const Color(AppColors.primaryValue), label: 'ຈັດສົ່ງແລ້ວ');
     }
     if (order.status == 'shipped') {
-      return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'On the way');
+      return (bg: const Color(0xFFEAF2FE), fg: const Color(0xFF2563EB), label: 'ກຳລັງຈັດສົ່ງ');
     }
-    return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'Preparing');
+    return (bg: const Color(0xFFFEF3E2), fg: const Color(AppColors.warningValue), label: 'ກຳລັງກຽມເຄື່ອງ');
   }
 
   /// Contextual next-step button, matching Shopee/Lazada's pattern of one
@@ -351,7 +351,7 @@ class _OrderCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Total: ${priceFormat.format(order.totalAmount)} ກີບ',
+                      'ລວມ: ${priceFormat.format(order.totalAmount)} ກີບ',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(AppColors.textDarkValue)),
                     ),
                   ],
