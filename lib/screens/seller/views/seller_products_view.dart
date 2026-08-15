@@ -587,7 +587,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                               labelText: 'ຕໍ່', border: OutlineInputBorder()),
                           items: _units
                               .map((u) => DropdownMenuItem(
-                                  value: u.id, child: Text(u.code)))
+                                  value: u.id, child: Text(u.nameLao)))
                               .toList(),
                           onChanged: (v) => setState(() => _selectedUnitId = v),
                         ),
