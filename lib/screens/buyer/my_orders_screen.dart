@@ -27,12 +27,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   late OrderStatusFilter _filter;
 
   static const _tabs = [
-    (OrderStatusFilter.all, 'All'),
-    (OrderStatusFilter.toPay, 'To Pay'),
-    (OrderStatusFilter.toShip, 'To Ship'),
-    (OrderStatusFilter.toReceive, 'To Receive'),
-    (OrderStatusFilter.toReview, 'To Review'),
-    (OrderStatusFilter.returns, 'Returns'),
+    (OrderStatusFilter.all, 'ທັງໝົດ'),
+    (OrderStatusFilter.toPay, 'ລໍຖ້າຈ່າຍເງິນ'),
+    (OrderStatusFilter.toShip, 'ລໍຈັດສົ່ງ'),
+    (OrderStatusFilter.toReceive, 'ລໍຮັບເຄື່ອງ'),
+    (OrderStatusFilter.toReview, 'ໃຫ້ຄະແນນ'),
+    (OrderStatusFilter.returns, 'ຄືນເຄື່ອງ'),
   ];
 
   @override
@@ -107,7 +107,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       // Already paid + submitted proof, just awaiting confirmation — no
       // button, nothing more for the buyer to do right now.
       if (order.proofSubmitted) return null;
-      return (label: 'Pay Now', primary: true);
+      return (label: 'ຈ່າຍເງິນເລີຍ', primary: true);
     }
     if (order.status == 'shipped') return (label: 'Track Order', primary: true);
     if (order.status == 'delivered') return (label: 'Rate Order', primary: false);
@@ -120,7 +120,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
     return Scaffold(
       backgroundColor: const Color(AppColors.backgroundValue),
-      appBar: AppBar(title: const Text('My Orders')),
+      appBar: AppBar(title: const Text('ຄຳສັ່ງຊື້ຂອງຂ້ອຍ')),
       body: Column(
         children: [
           Container(
@@ -204,7 +204,7 @@ class _OrderCard extends StatelessWidget {
 
   Future<void> _handleAction(BuildContext context) async {
     if (action == null) return;
-    if (action!.label == 'Pay Now') {
+    if (action!.label == 'ຈ່າຍເງິນເລີຍ') {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BuyerPaymentScreen(
