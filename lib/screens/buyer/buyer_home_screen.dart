@@ -249,12 +249,12 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(AppColors.primaryValue),
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Orders'),
-          const BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'ໜ້າຫຼັກ'),
+          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'ຄໍາສັ່ງຊື້'),
+          const BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'ກະຕ່າ'),
           BottomNavigationBarItem(
             icon: Icon(appState.isLoggedIn ? Icons.account_circle : Icons.login),
-            label: appState.isLoggedIn ? 'Account' : 'Login',
+            label: appState.isLoggedIn ? 'ບັນຊີ' : 'ເຂົ້າສູ່ລະບົບ',
           ),
         ],
       ),
