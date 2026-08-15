@@ -15,6 +15,7 @@ import 'views/admin_categories_view.dart';
 import 'views/admin_seller_tools_view.dart';
 import 'views/admin_payment_confirmations_view.dart';
 import 'views/admin_fee_configs_view.dart';
+import 'views/admin_content_view.dart';
 import 'admin_payment_qr_upload_screen.dart';
 
 // Below this width the permanent sidebar becomes a Drawer + bottom nav
@@ -46,6 +47,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     NavGroup(title: 'ເນື້ອຫາ', items: [
       NavItem(label: 'ແບນເນີ', icon: Icons.view_carousel, index: 1),
       NavItem(label: 'ໝວດໝູ່', icon: Icons.category, index: 12),
+      NavItem(label: 'ຂໍ້ຄວາມ', icon: Icons.text_fields, index: 13),
     ]),
     NavGroup(title: 'ຈັດການຜູ້ໃຊ້', items: [
       NavItem(label: 'ຜູ້ໃຊ້', icon: Icons.people, index: 2),
@@ -85,6 +87,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     AdminPaymentConfirmationsView(),
     AdminFeeConfigsView(),
     const AdminCategoriesView(),
+    const AdminContentView(),
   ];
 
   // Flat label lookup for the mobile AppBar title, keyed by the same
@@ -103,6 +106,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     'ຢືນຢັນການຊຳລະເງິນ',
     'ຄ່າທຳນຽມ',
     'ໝວດໝູ່ສິນຄ້າ',
+    'ຂໍ້ຄວາມ',
   ];
 
   static const _bottomNavItems = [

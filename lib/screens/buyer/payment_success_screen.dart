@@ -1,14 +1,45 @@
 import 'package:flutter/material.dart';
+import '../../services/app_content_service.dart';
 
-class PaymentSuccessScreen extends StatelessWidget {
+class PaymentSuccessScreen extends StatefulWidget {
   final String? orderCode;
-  final String deliveryEstimate;
 
   const PaymentSuccessScreen({
     super.key,
     this.orderCode,
-    this.deliveryEstimate = '3-5 ມື້',
   });
+
+  @override
+  State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
+}
+
+class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
+  final _contentService = AppContentService();
+
+  // Fallbacks used if the API call fails or a key is missing, so the
+  // screen never shows blank text.
+  String _title = 'ທ່ານໄດ້ຊຳລະເງິນສຳເລັດແລ້ວ';
+  String _subtitle = 'ກະລຸນາລໍຖ້າຮັບເຄື່ອງພາຍໃນ 3-5 ມື້';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContent();
+  }
+
+  Future<void> _loadContent() async {
+    try {
+      final content = await _contentService.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _title = content['payment_success_title'] ?? _title;
+        _subtitle = content['payment_success_subtitle'] ?? _subtitle;
+      });
+    } catch (_) {
+      // Silently keep fallback text — this screen should never block or
+      // show an error just because the content endpoint is unreachable.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +65,10 @@ class PaymentSuccessScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text(
-                'ທ່ານໄດ້ຊຳລະເງິນສຳເລັດແລ້ວ',
+              Text(
+                _title,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1B7A3D),
@@ -45,14 +76,14 @@ class PaymentSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'ກະລຸນາລໍຖ້າຮັບເຄື່ອງພາຍໃນ $deliveryEstimate',
+                _subtitle,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.black87,
                 ),
               ),
-              if (orderCode != null) ...[
+              if (widget.orderCode != null) ...[
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -64,7 +95,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    'ລະຫັດຄຳສັ່ງຊື້: $orderCode',
+                    'ລະຫັດຄຳສັ່ງຊື້: ${widget.orderCode}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -85,7 +116,6 @@ class PaymentSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    // Go back to home / orders list, clearing the stack
                     Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                   child: const Text(
