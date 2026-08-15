@@ -321,8 +321,8 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => PaymentProofScreen(orderIds: orderIds)),
       );
-      if (!mounted) return;
-      Navigator.of(context).pop(result);
+      // PaymentProofScreen now navigates to PaymentSuccessScreen itself on
+      // success (via pushReplacement), so no need to pop back here.
     } catch (e) {
       if (!mounted) return;
       setState(() => _confirming = false);
