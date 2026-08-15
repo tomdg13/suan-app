@@ -1,5 +1,6 @@
 class Store {
   final int id;
+  final int? ownerId;
   final String storeName;
   final String? logoUrl;
   final String? coverUrl;
@@ -10,6 +11,7 @@ class Store {
 
   Store({
     required this.id,
+    this.ownerId,
     required this.storeName,
     this.logoUrl,
     this.coverUrl,
@@ -22,6 +24,7 @@ class Store {
   factory Store.fromJson(Map<String, dynamic> json) {
     return Store(
       id: json['id'],
+      ownerId: json['ownerId'],
       storeName: json['storeName'] ?? '',
       logoUrl: json['logoUrl'],
       coverUrl: json['coverUrl'],

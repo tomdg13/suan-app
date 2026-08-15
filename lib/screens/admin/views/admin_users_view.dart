@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../config/constants.dart';
 import '../../../models/admin_user.dart';
+import '../../../models/store.dart';
 import '../../../services/user_service.dart';
+import '../../../services/store_service.dart';
 import '../../../services/api_client.dart';
 
 // Same breakpoint used across the other admin/seller screens.
@@ -16,11 +18,14 @@ class AdminUsersView extends StatefulWidget {
 
 class _AdminUsersViewState extends State<AdminUsersView> {
   final _userService = UserService();
+  final _storeService = StoreService();
   List<AdminUser> _users = [];
+  Map<int, String> _sellerLogoByOwnerId = {};
   bool _loading = true;
   String? _error;
 
   final _roles = const ['buyer', 'seller', 'admin'];
+  String? _roleFilter; // null = show all
 
   @override
   void initState() {
@@ -34,8 +39,22 @@ class _AdminUsersViewState extends State<AdminUsersView> {
       _error = null;
     });
     try {
-      final users = await _userService.getAllUsers();
-      setState(() => _users = users);
+      final results = await Future.wait([
+        _userService.getAllUsers(),
+        _storeService.getStores(),
+      ]);
+      final users = results[0] as List<AdminUser>;
+      final stores = results[1] as List<Store>;
+      final logoMap = <int, String>{};
+      for (final store in stores) {
+        if (store.ownerId != null && store.logoUrl != null && store.logoUrl!.isNotEmpty) {
+          logoMap[store.ownerId!] = store.logoUrl!;
+        }
+      }
+      setState(() {
+        _users = users;
+        _sellerLogoByOwnerId = logoMap;
+      });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -173,6 +192,9 @@ class _AdminUsersViewState extends State<AdminUsersView> {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < _kMobileBreakpoint;
 
+        final filteredUsers = _roleFilter == null
+            ? _users
+            : _users.where((u) => u.role == _roleFilter).toList();
         return RefreshIndicator(
           onRefresh: _load,
           child: ListView(
@@ -180,7 +202,33 @@ class _AdminUsersViewState extends State<AdminUsersView> {
             children: [
               const Text('ຜູ້ໃຊ້', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              ..._users.map((user) => _buildUserCard(user, isMobile)),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('ທັງໝົດ'),
+                    selected: _roleFilter == null,
+                    onSelected: (_) => setState(() => _roleFilter = null),
+                  ),
+                  ChoiceChip(
+                    label: const Text('ຜູ້ຊື້'),
+                    selected: _roleFilter == 'buyer',
+                    onSelected: (_) => setState(() => _roleFilter = 'buyer'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('ຜູ້ຂາຍ'),
+                    selected: _roleFilter == 'seller',
+                    onSelected: (_) => setState(() => _roleFilter = 'seller'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('ແອັດມິນ'),
+                    selected: _roleFilter == 'admin',
+                    onSelected: (_) => setState(() => _roleFilter = 'admin'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...filteredUsers.map((user) => _buildUserCard(user, isMobile)),
             ],
           ),
         );
@@ -189,13 +237,18 @@ class _AdminUsersViewState extends State<AdminUsersView> {
   }
 
   Widget _buildUserCard(AdminUser user, bool isMobile) {
-    final hasAvatar = user.avatarUrl != null && user.avatarUrl!.isNotEmpty;
+    // Prefer the user's own avatar; for sellers without one, fall back
+    // to their store's logo so they're still visually identifiable.
+    final effectiveImageUrl = (user.avatarUrl != null && user.avatarUrl!.isNotEmpty)
+        ? user.avatarUrl
+        : _sellerLogoByOwnerId[user.id];
+    final hasImage = effectiveImageUrl != null && effectiveImageUrl.isNotEmpty;
     final avatar = CircleAvatar(
       backgroundColor: _roleColor(user.role),
-      backgroundImage: hasAvatar
-          ? NetworkImage('\${ApiConfig.mediaBaseUrl}\${user.avatarUrl}')
+      backgroundImage: hasImage
+          ? NetworkImage('${ApiConfig.mediaBaseUrl}$effectiveImageUrl')
           : null,
-      child: hasAvatar
+      child: hasImage
           ? null
           : Text(
               user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
