@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../config/constants.dart';
 import '../../services/orders_service.dart';
+import 'payment_success_screen.dart';
 
 // ---------------------------------------------------------------------
 // PaymentProofScreen
