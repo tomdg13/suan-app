@@ -173,7 +173,11 @@ class _PaymentProofScreenState extends State<PaymentProofScreen> {
         );
       }
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => PaymentSuccessScreen(orderCode: null),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
