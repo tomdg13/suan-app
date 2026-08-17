@@ -610,33 +610,47 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text('ບໍ່ມີວິທີການຈັດສົ່ງໃຫ້ເລືອກ', style: TextStyle(fontSize: 12, color: Colors.grey)),
             ),
-          ..._deliveryOptions.map((option) => RadioListTile<int>(
-                value: option.id,
-                groupValue: _selectedDeliveryOptionId,
-                onChanged: (v) => setState(() => _selectedDeliveryOptionId = v),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                activeColor: const Color(AppColors.primaryValue),
-                controlAffinity: ListTileControlAffinity.trailing,
-                secondary: (option.logoUrl != null && option.logoUrl!.isNotEmpty)
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          '${ApiConfig.mediaBaseUrl}${option.logoUrl}',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.local_shipping, color: Colors.grey),
+          ..._deliveryOptions.map((option) => InkWell(
+                onTap: () => setState(() => _selectedDeliveryOptionId = option.id),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Radio<int>(
+                        value: option.id,
+                        groupValue: _selectedDeliveryOptionId,
+                        onChanged: (v) => setState(() => _selectedDeliveryOptionId = v),
+                        activeColor: const Color(AppColors.primaryValue),
+                      ),
+                      (option.logoUrl != null && option.logoUrl!.isNotEmpty)
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                '${ApiConfig.mediaBaseUrl}${option.logoUrl}',
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.local_shipping, color: Colors.grey),
+                              ),
+                            )
+                          : const Icon(Icons.local_shipping_outlined, color: Colors.grey),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              option.name,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            if (option.description != null)
+                              Text(option.description!, style: const TextStyle(fontSize: 12)),
+                          ],
                         ),
-                      )
-                    : const Icon(Icons.local_shipping_outlined, color: Colors.grey),
-                title: Text(
-                  option.name,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-                subtitle: option.description != null
-                    ? Text(option.description!, style: const TextStyle(fontSize: 12))
-                    : null,
               )),
         ],
       ),
