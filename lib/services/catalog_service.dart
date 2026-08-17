@@ -39,6 +39,16 @@ class CatalogService {
     return ProductCategory.fromJson(response);
   }
 
+  /// PATCH /categories/reorder — persists new sort_order values after a
+  /// drag-and-drop reorder in the admin UI.
+  Future<void> reorderCategories(List<int> orderedIds) async {
+    final items = [
+      for (var i = 0; i < orderedIds.length; i++)
+        {'id': orderedIds[i], 'sortOrder': i + 1},
+    ];
+    await _api.patch('/categories/reorder', {'items': items}, auth: true);
+  }
+
   Future<ProductCategory> updateCategory(int id, {String? nameLao, String? nameEn, int? sortOrder, int? isActive, Uint8List? imageBytes}) async {
     final fields = <String, String>{
       if (nameLao != null) 'nameLao': nameLao,

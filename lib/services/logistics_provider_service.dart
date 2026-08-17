@@ -62,6 +62,16 @@ class LogisticsProviderService {
     return LogisticsProvider.fromJson(data as Map<String, dynamic>);
   }
 
+  /// PATCH /logistics-provider/reorder — persists new sort_order values
+  /// after a drag-and-drop reorder in the admin UI.
+  Future<void> reorderProviders(List<int> orderedIds) async {
+    final items = [
+      for (var i = 0; i < orderedIds.length; i++)
+        {'id': orderedIds[i], 'sortOrder': i + 1},
+    ];
+    await _api.patch('/logistics-provider/reorder', {'items': items}, auth: true);
+  }
+
   Future<void> toggleActive(int id) async {
     await _api.patch('/logistics-provider/$id/toggle-active', {}, auth: true);
   }

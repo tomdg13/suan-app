@@ -61,6 +61,97 @@ class _AdminLogisticsProvidersViewState extends State<AdminLogisticsProvidersVie
     _load();
   }
 
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _providers.removeAt(oldIndex);
+      _providers.insert(newIndex, item);
+    });
+    try {
+      await _service.reorderProviders(_providers.map((p) => p.id).toList());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ບໍ່ສາມາດບັນທຶກລຳດັບໄດ້: \$e')),
+      );
+      _load();
+    }
+  }
+
+  Widget _buildProviderCard(LogisticsProvider p, {required int index, required Key key}) {
+    return Card(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.drag_handle, color: Colors.grey),
+              ),
+            ),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(AppColors.primaryValue).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                p.type == 'store_pickup'
+                    ? Icons.store
+                    : p.type == 'customer_courier'
+                        ? Icons.local_shipping_outlined
+                        : Icons.local_shipping,
+                color: Colors.green,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  if (p.description != null && p.description!.isNotEmpty)
+                    Text(
+                      p.description!,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                  Text(
+                    '${_typeLabel(p.type)} · ລຳດັບ: ${p.sortOrder}',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'ແກ້ໄຂ',
+              onPressed: () => _openForm(existing: p),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              tooltip: 'ລົບ',
+              onPressed: () => _delete(p),
+            ),
+            Switch(
+              value: p.isActive,
+              activeColor: const Color(AppColors.primaryValue),
+              onChanged: (_) => _toggleActive(p),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _openForm({LogisticsProvider? existing}) {
     showModalBottomSheet(
       context: context,
@@ -112,78 +203,23 @@ class _AdminLogisticsProvidersViewState extends State<AdminLogisticsProvidersVie
           ),
           const SizedBox(height: 4),
           Text(
-            'ຕົວເລືອກທີ່ຜູ້ຊື້ຈະເຫັນຕອນຊຳລະເງິນ. ປິດການໃຊ້ງານເພື່ອເຊື່ອງໂດຍບໍ່ຕ້ອງລົບ.',
+            'ຕົວເລືອກທີ່ຜູ້ຊື້ຈະເຫັນຕອນຊຳລະເງິນ. ປິດການໃຊ້ງານເພື່ອເຊື່ອງໂດຍບໍ່ຕ້ອງລົບ. ລາກ ⠿ ເພື່ອຈັດລຳດັບ.',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 16),
           if (_providers.isEmpty)
             const Text('ຍັງບໍ່ມີວິທີການຈັດສົ່ງ — ກົດ "ເພີ່ມວິທີການ" ເພື່ອສ້າງ.')
           else
-            ..._providers.map((p) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(AppColors.primaryValue).withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          p.type == 'store_pickup'
-                              ? Icons.store
-                              : p.type == 'customer_courier'
-                                  ? Icons.local_shipping_outlined
-                                  : Icons.local_shipping,
-                          color: Colors.green,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            if (p.description != null && p.description!.isNotEmpty)
-                              Text(
-                                p.description!,
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                              ),
-                            Text(
-                              '${_typeLabel(p.type)} · ລຳດັບ: ${p.sortOrder}',
-                              style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        tooltip: 'ແກ້ໄຂ',
-                        onPressed: () => _openForm(existing: p),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                        tooltip: 'ລົບ',
-                        onPressed: () => _delete(p),
-                      ),
-                      Switch(
-                        value: p.isActive,
-                        activeColor: const Color(AppColors.primaryValue),
-                        onChanged: (_) => _toggleActive(p),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: _onReorder,
+              children: [
+                for (var i = 0; i < _providers.length; i++)
+                  _buildProviderCard(_providers[i], index: i, key: ValueKey(_providers[i].id)),
+              ],
+            ),
         ],
       ),
     );

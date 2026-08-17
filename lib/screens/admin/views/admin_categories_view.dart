@@ -69,6 +69,93 @@ class _AdminCategoriesViewState extends State<AdminCategoriesView> {
     _load();
   }
 
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _categories.removeAt(oldIndex);
+      _categories.insert(newIndex, item);
+    });
+    try {
+      await _service.reorderCategories(_categories.map((c) => c.id).toList());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ບໍ່ສາມາດບັນທຶກລຳດັບໄດ້: \$e')),
+      );
+      _load();
+    }
+  }
+
+  Widget _buildCategoryCard(ProductCategory cat, {required int index, required Key key}) {
+    final hasImage = cat.iconUrl != null && cat.iconUrl!.isNotEmpty;
+    return Card(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.drag_handle, color: Colors.grey),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: hasImage
+                  ? Image.network(
+                      _fullUrl(cat.iconUrl!),
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholder(),
+                    )
+                  : _placeholder(),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cat.nameLao,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  if (cat.nameEn != null && cat.nameEn!.isNotEmpty)
+                    Text(
+                      cat.nameEn!,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                  Text(
+                    'ລຳດັບ: ${cat.sortOrder}',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'ແກ້ໄຂ',
+              onPressed: () => _openForm(existing: cat),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              tooltip: 'ລົບ',
+              onPressed: () => _delete(cat),
+            ),
+            Switch(
+              value: cat.isActive,
+              activeColor: const Color(AppColors.primaryValue),
+              onChanged: (_) => _toggleActive(cat),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _openForm({ProductCategory? existing}) {
     showModalBottomSheet(
       context: context,
@@ -111,7 +198,7 @@ class _AdminCategoriesViewState extends State<AdminCategoriesView> {
           ),
           const SizedBox(height: 4),
           Text(
-            'ໝວດໝູ່ທີ່ສະແດງຢູ່ໜ້າຫຼັກ. ສາມາດເພີ່ມຮູບໄດ້.',
+            'ໝວດໝູ່ທີ່ສະແດງຢູ່ໜ້າຫຼັກ. ສາມາດເພີ່ມຮູບໄດ້. ລາກ ⠿ ເພື່ອຈັດລຳດັບ.',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -125,76 +212,16 @@ class _AdminCategoriesViewState extends State<AdminCategoriesView> {
           if (_categories.isEmpty)
             const Text('ຍັງບໍ່ມີໝວດໝູ່ — ກົດ "ເພີ່ມໝວດ" ເພື່ອສ້າງ.')
           else
-            ..._categories.map((cat) {
-              final hasImage = cat.iconUrl != null && cat.iconUrl!.isNotEmpty;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      // ── Image / placeholder ──────────────────────
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: hasImage
-                            ? Image.network(
-                                _fullUrl(cat.iconUrl!),
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _placeholder(),
-                              )
-                            : _placeholder(),
-                      ),
-                      const SizedBox(width: 14),
-
-                      // ── Labels ───────────────────────────────────
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              cat.nameLao,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            if (cat.nameEn != null && cat.nameEn!.isNotEmpty)
-                              Text(
-                                cat.nameEn!,
-                                style: TextStyle(
-                                    color: Colors.grey.shade600, fontSize: 12),
-                              ),
-                            Text(
-                              'ລຳດັບ: ${cat.sortOrder}',
-                              style: TextStyle(
-                                  color: Colors.grey.shade500, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ── Actions ──────────────────────────────────
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        tooltip: 'ແກ້ໄຂ',
-                        onPressed: () => _openForm(existing: cat),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 20, color: Colors.red),
-                        tooltip: 'ລົບ',
-                        onPressed: () => _delete(cat),
-                      ),
-                      Switch(
-                        value: cat.isActive,
-                        activeColor: const Color(AppColors.primaryValue),
-                        onChanged: (_) => _toggleActive(cat),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: _onReorder,
+              children: [
+                for (var i = 0; i < _categories.length; i++)
+                  _buildCategoryCard(_categories[i], index: i, key: ValueKey(_categories[i].id)),
+              ],
+            ),
         ],
       ),
     );
