@@ -617,6 +617,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 activeColor: const Color(AppColors.primaryValue),
+                controlAffinity: ListTileControlAffinity.trailing,
                 secondary: (option.logoUrl != null && option.logoUrl!.isNotEmpty)
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
