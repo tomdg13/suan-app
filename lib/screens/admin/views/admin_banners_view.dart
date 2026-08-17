@@ -125,10 +125,11 @@ class _AdminBannersViewState extends State<AdminBannersView> {
             ReorderableListView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
               onReorder: _onReorder,
               children: [
-                for (final banner in _banners)
-                  _buildBannerCard(banner, key: ValueKey(banner.id)),
+                for (var i = 0; i < _banners.length; i++)
+                  _buildBannerCard(_banners[i], key: ValueKey(_banners[i].id), index: i),
               ],
             ),
         ],
@@ -136,7 +137,7 @@ class _AdminBannersViewState extends State<AdminBannersView> {
     );
   }
 
-  Widget _buildBannerCard(BannerItem banner, {required Key key}) {
+  Widget _buildBannerCard(BannerItem banner, {required Key key, required int index}) {
     final hasTitle = banner.title != null && banner.title!.trim().isNotEmpty;
     final hasSubtitle = banner.subtitle != null && banner.subtitle!.trim().isNotEmpty;
     return Card(
@@ -146,7 +147,10 @@ class _AdminBannersViewState extends State<AdminBannersView> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            const Icon(Icons.drag_handle, color: Colors.grey),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(Icons.drag_handle, color: Colors.grey),
+            ),
             const SizedBox(width: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
