@@ -72,6 +72,7 @@ class ProductService {
     String? description,
     required double basePrice,
     double stockQty = 0,
+    double weight = 0,
   }) async {
     final json = await _api.post('/products/store/$storeId', {
       'categoryId': categoryId,
@@ -81,6 +82,7 @@ class ProductService {
       if (description != null) 'description': description,
       'basePrice': basePrice,
       'stockQty': stockQty,
+      'weight': weight,
     }, auth: true);
     return Product.fromJson(json);
   }
@@ -96,6 +98,7 @@ class ProductService {
     String? description,
     double? basePrice,
     double? stockQty,
+    double? weight,
     bool? isActive,
   }) async {
     final json = await _api.patch('/products/$id', {
@@ -106,6 +109,7 @@ class ProductService {
       if (description != null) 'description': description,
       if (basePrice != null) 'basePrice': basePrice,
       if (stockQty != null) 'stockQty': stockQty,
+      if (weight != null) 'weight': weight,
       if (isActive != null) 'isActive': isActive ? 1 : 0,
     }, auth: true);
     return Product.fromJson(json);

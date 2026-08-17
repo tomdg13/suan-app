@@ -1,7 +1,12 @@
 // lib/screens/admin/views/admin_logistics_providers_view.dart
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../config/constants.dart';
 import '../../../services/logistics_provider_service.dart';
+import '../../../services/api_client.dart';
+import '../../../widgets/image_crop_screen.dart';
+import '../../../utils/image_compress.dart';
 
 class AdminLogisticsProvidersView extends StatefulWidget {
   const AdminLogisticsProvidersView({super.key});
@@ -93,22 +98,17 @@ class _AdminLogisticsProvidersViewState extends State<AdminLogisticsProvidersVie
                 child: Icon(Icons.drag_handle, color: Colors.grey),
               ),
             ),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(AppColors.primaryValue).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                p.type == 'store_pickup'
-                    ? Icons.store
-                    : p.type == 'customer_courier'
-                        ? Icons.local_shipping_outlined
-                        : Icons.local_shipping,
-                color: Colors.green,
-                size: 22,
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: (p.logoUrl != null && p.logoUrl!.isNotEmpty)
+                  ? Image.network(
+                      '${ApiConfig.mediaBaseUrl}${p.logoUrl}',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _typeIcon(p.type),
+                    )
+                  : _typeIcon(p.type),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -178,6 +178,26 @@ class _AdminLogisticsProvidersViewState extends State<AdminLogisticsProvidersVie
     }
   }
 
+  Widget _typeIcon(String type) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: const Color(AppColors.primaryValue).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        type == 'store_pickup'
+            ? Icons.store
+            : type == 'customer_courier'
+                ? Icons.local_shipping_outlined
+                : Icons.local_shipping,
+        color: Colors.green,
+        size: 22,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -239,6 +259,7 @@ class _ProviderFormSheet extends StatefulWidget {
 
 class _ProviderFormSheetState extends State<_ProviderFormSheet> {
   final _service = LogisticsProviderService();
+  final _imagePicker = ImagePicker();
 
   late final _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
   late final _descCtrl = TextEditingController(text: widget.existing?.description ?? '');
@@ -246,10 +267,34 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
   late String _type = widget.existing?.type ?? 'logistic';
   late bool _isActive = widget.existing?.isActive ?? true;
 
+  Uint8List? _pickedImage;
   bool _submitting = false;
   String? _error;
 
   bool get _isEdit => widget.existing != null;
+  String _fullUrl(String path) => '${ApiConfig.mediaBaseUrl}$path';
+
+  Future<void> _pickImage() async {
+    final picked = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+    if (!mounted) return;
+
+    final rawBytes = await picked.readAsBytes();
+    final cropped = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(
+        builder: (_) => ImageCropScreen(
+          imageBytes: rawBytes,
+          aspectRatio: 1, // square logo
+          title: 'ຕັດຮູບໂລໂກ້',
+        ),
+      ),
+    );
+    if (cropped == null) return;
+
+    setState(() {
+      _pickedImage = compressImage(cropped, maxDimension: 400, quality: 85);
+    });
+  }
 
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
@@ -262,23 +307,34 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
       _error = null;
     });
     try {
-      final provider = LogisticsProvider(
-        id: widget.existing?.id ?? 0,
-        name: name,
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-        type: _type,
-        isActive: _isActive,
-        sortOrder: int.tryParse(_sortCtrl.text.trim()) ?? 0,
-      );
+      final description = _descCtrl.text.trim();
+      final sortOrder = int.tryParse(_sortCtrl.text.trim()) ?? 0;
 
       if (_isEdit) {
-        await _service.update(widget.existing!.id, provider);
+        await _service.update(
+          widget.existing!.id,
+          name: name,
+          description: description.isEmpty ? null : description,
+          type: _type,
+          isActive: _isActive,
+          sortOrder: sortOrder,
+          imageBytes: _pickedImage,
+        );
       } else {
-        await _service.create(provider);
+        await _service.create(
+          name: name,
+          description: description.isEmpty ? null : description,
+          type: _type,
+          isActive: _isActive,
+          sortOrder: sortOrder,
+          imageBytes: _pickedImage,
+        );
       }
       widget.onSaved();
       if (!mounted) return;
       Navigator.of(context).pop();
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -301,7 +357,39 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: const Color(AppColors.primaryValue).withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(AppColors.primaryValue).withValues(alpha: 0.3)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _pickedImage != null
+                      ? Image.memory(_pickedImage!, fit: BoxFit.cover)
+                      : (widget.existing?.logoUrl != null && widget.existing!.logoUrl!.isNotEmpty)
+                          ? Image.network(_fullUrl(widget.existing!.logoUrl!), fit: BoxFit.cover)
+                          : const Icon(Icons.add_photo_alternate, size: 30, color: Colors.green),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: OutlinedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.image_outlined, size: 16),
+                label: Text(
+                  _pickedImage != null || (widget.existing?.logoUrl?.isNotEmpty ?? false) ? 'ປ່ຽນໂລໂກ້' : 'ເລືອກໂລໂກ້',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(

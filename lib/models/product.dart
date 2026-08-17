@@ -48,6 +48,7 @@ class Product {
   final int soldCount;
   final double ratingAvg;
   final int ratingCount;
+  final double weight;
   final List<ProductVariant> variants;
   final List<ProductImageInfo> images;
   final String? storeName;
@@ -67,6 +68,7 @@ class Product {
     this.soldCount = 0,
     this.ratingAvg = 0,
     this.ratingCount = 0,
+    this.weight = 0,
     this.variants = const [],
     this.images = const [],
     this.storeName,
@@ -92,6 +94,7 @@ class Product {
       soldCount: json['soldCount'] ?? 0,
       ratingAvg: double.tryParse('${json['ratingAvg']}') ?? 0,
       ratingCount: json['ratingCount'] ?? 0,
+      weight: double.tryParse('${json['weight']}') ?? 0,
       variants: (json['variants'] as List<dynamic>? ?? [])
           .map((v) => ProductVariant.fromJson(v))
           .toList(),
