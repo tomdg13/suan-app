@@ -617,6 +617,18 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 activeColor: const Color(AppColors.primaryValue),
+                secondary: (option.logoUrl != null && option.logoUrl!.isNotEmpty)
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          '${ApiConfig.mediaBaseUrl}${option.logoUrl}',
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.local_shipping, color: Colors.grey),
+                        ),
+                      )
+                    : const Icon(Icons.local_shipping_outlined, color: Colors.grey),
                 title: Text(
                   option.name,
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
