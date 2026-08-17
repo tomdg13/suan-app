@@ -35,6 +35,23 @@ class _AdminBannersViewState extends State<AdminBannersView> {
     });
   }
 
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _banners.removeAt(oldIndex);
+      _banners.insert(newIndex, item);
+    });
+    try {
+      await _bannerService.reorderBanners(_banners.map((b) => b.id).toList());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ບໍ່ສາມາດບັນທຶກລຳດັບໄດ້: \$e')),
+      );
+      _load();
+    }
+  }
+
   Future<void> _toggleActive(BannerItem banner) async {
     await _bannerService.updateBanner(
       banner.id,
@@ -99,57 +116,72 @@ class _AdminBannersViewState extends State<AdminBannersView> {
           ),
           const SizedBox(height: 4),
           Text(
-            'ອັນເຫຼົ່ານີ້ຈະສະແດງເປັນສະໄລ້ໂປຣໂມຊັນເທິງໜ້າຫຼັກຂອງຮ້ານ.',
+            'ອັນເຫຼົ່ານີ້ຈະສະແດງເປັນສະໄລ້ໂປຣໂມຊັນເທິງໜ້າຫຼັກຂອງຮ້ານ. ລາກ ⠿ ເພື່ອຈັດລຳດັບ.',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 16),
           if (_banners.isEmpty) const Text('ຍັງບໍ່ມີແບນເນີ — ເພີ່ມອັນໜຶ່ງເພື່ອແທນທີ່ຮູບເລີ່ມຕົ້ນ.'),
-          ..._banners.map((banner) {
-            final hasTitle = banner.title != null && banner.title!.trim().isNotEmpty;
-            final hasSubtitle = banner.subtitle != null && banner.subtitle!.trim().isNotEmpty;
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        _fullUrl(banner.imageUrl),
-                        width: 90, height: 60, fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(hasTitle ? banner.title! : '(ບໍ່ມີຫົວຂໍ້)',
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          if (hasSubtitle)
-                            Text(banner.subtitle!,
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      onPressed: () => _openForm(existing: banner),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      onPressed: () => _delete(banner),
-                    ),
-                    Switch(
-                      value: banner.isActive,
-                      onChanged: (_) => _toggleActive(banner),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
+          if (_banners.isNotEmpty)
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              onReorder: _onReorder,
+              children: [
+                for (final banner in _banners)
+                  _buildBannerCard(banner, key: ValueKey(banner.id)),
+              ],
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBannerCard(BannerItem banner, {required Key key}) {
+    final hasTitle = banner.title != null && banner.title!.trim().isNotEmpty;
+    final hasSubtitle = banner.subtitle != null && banner.subtitle!.trim().isNotEmpty;
+    return Card(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(Icons.drag_handle, color: Colors.grey),
+            const SizedBox(width: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                _fullUrl(banner.imageUrl),
+                width: 90, height: 60, fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(hasTitle ? banner.title! : '(ບໍ່ມີຫົວຂໍ້)',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  if (hasSubtitle)
+                    Text(banner.subtitle!,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              onPressed: () => _openForm(existing: banner),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              onPressed: () => _delete(banner),
+            ),
+            Switch(
+              value: banner.isActive,
+              onChanged: (_) => _toggleActive(banner),
+            ),
+          ],
+        ),
       ),
     );
   }

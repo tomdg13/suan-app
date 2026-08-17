@@ -68,6 +68,16 @@ class BannerService {
     return BannerItem.fromJson(response);
   }
 
+  /// PATCH /banners/reorder — persists new sort_order values after a
+  /// drag-and-drop reorder in the admin UI.
+  Future<void> reorderBanners(List<int> orderedIds) async {
+    final items = [
+      for (var i = 0; i < orderedIds.length; i++)
+        {'id': orderedIds[i], 'sortOrder': i + 1},
+    ];
+    await _api.patch('/banners/reorder', {'items': items}, auth: true);
+  }
+
   Future<void> deleteBanner(int id) async {
     final token = await _api.getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}/banners/$id');
