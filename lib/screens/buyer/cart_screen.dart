@@ -271,7 +271,7 @@ class _CartScreenState extends State<CartScreen> {
                         child: Row(
                           children: [
                             Text(
-                              'ຄ່າທຳນຽມ ($_selectedStoreCount ຮ້ານ): ${priceFormat.format(_estimatedFeesTotal)} ກີບ', // Fees (N stores)
+                              '${_activeFees.map((f) => f.name).join(', ')} ($_selectedStoreCount ຮ້ານ): ${priceFormat.format(_estimatedFeesTotal)} ກີບ',
                               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
