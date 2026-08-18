@@ -437,6 +437,10 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   late final _descCtrl = TextEditingController(text: widget.existingProduct?.description ?? '');
   late final _priceCtrl = TextEditingController(
       text: widget.existingProduct != null ? widget.existingProduct!.basePrice.toStringAsFixed(0) : '');
+  late final _weightCtrl = TextEditingController(
+      text: widget.existingProduct != null && widget.existingProduct!.weight > 0
+          ? widget.existingProduct!.weight.toString()
+          : '');
   List<ProductCategory> _categories = [];
   List<ProductUnit> _units = [];
   int? _selectedCategoryId;
@@ -502,6 +506,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+          weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
         );
       } else {
         // New products start at 0 stock — add stock via the Stock
@@ -513,6 +518,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+          weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
         );
       }
       if (_pickedImages.isNotEmpty) {
@@ -602,6 +608,16 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         'ຕົວຢ່າງ: ເລືອກ "g" ເພື່ອຂາຍເປັນກຣາມ, "kg" ເປັນກິໂລ, ຫຼື "piece" ສຳລັບຂາຍເປັນຫົວ/ອັນ',
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _weightCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'ນ້ຳໜັກ (ກິໂລ) - ໃຊ້ຄິດຄ່າຂົນສົງ',
+                      hintText: 'ຕົວຢ່າງ 0.5, 1, 2.5',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 16),

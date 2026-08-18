@@ -15,6 +15,7 @@ import 'views/admin_categories_view.dart';
 import 'views/admin_seller_tools_view.dart';
 import 'views/admin_payment_confirmations_view.dart';
 import 'views/admin_fee_configs_view.dart';
+import 'views/admin_shipping_tiers_view.dart';
 import 'views/admin_content_view.dart';
 import 'views/admin_logistics_providers_view.dart';
 import 'admin_payment_qr_upload_screen.dart';
@@ -67,6 +68,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       NavItem(label: 'QR ຊຳລະເງິນ', icon: Icons.qr_code, index: 9),
       NavItem(label: 'ຢືນຢັນການຊຳລະເງິນ', icon: Icons.fact_check, index: 10),
       NavItem(label: 'ຄ່າທຳນຽມ', icon: Icons.receipt_long_outlined, index: 11),
+      NavItem(label: 'ຄ່າຂົນສົງ', icon: Icons.local_shipping_outlined, index: 15),
     ]),
     // New: lets the admin operate a store the same way a seller does
     // (Store Profile, Products, Orders) without leaving the adminpanel.
@@ -91,6 +93,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     const AdminCategoriesView(),
     const AdminContentView(),
     const AdminLogisticsProvidersView(),
+    const AdminShippingTiersView(),
   ];
 
   // Flat label lookup for the mobile AppBar title, keyed by the same
@@ -111,6 +114,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     'ໝວດໝູ່ສິນຄ້າ',
     'ຂໍ້ຄວາມ',
     'ວິທີການຈັດສົ່ງ',
+    'ຄ່າຂົນສົງ',
   ];
 
   static const _bottomNavItems = [
