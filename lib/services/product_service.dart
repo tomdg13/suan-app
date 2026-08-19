@@ -67,22 +67,26 @@ class ProductService {
     required int storeId,
     required int categoryId,
     required int unitId,
+    int? providerId,
     required String nameLao,
     String? nameEn,
     String? description,
     required double basePrice,
     double stockQty = 0,
     double weight = 0,
+    double sizeCm = 0,
   }) async {
     final json = await _api.post('/products/store/$storeId', {
       'categoryId': categoryId,
       'unitId': unitId,
+      if (providerId != null) 'providerId': providerId,
       'nameLao': nameLao,
       if (nameEn != null) 'nameEn': nameEn,
       if (description != null) 'description': description,
       'basePrice': basePrice,
       'stockQty': stockQty,
       'weight': weight,
+      'sizeCm': sizeCm,
     }, auth: true);
     return Product.fromJson(json);
   }
@@ -93,23 +97,27 @@ class ProductService {
     int id, {
     int? categoryId,
     int? unitId,
+    int? providerId,
     String? nameLao,
     String? nameEn,
     String? description,
     double? basePrice,
     double? stockQty,
     double? weight,
+    double? sizeCm,
     bool? isActive,
   }) async {
     final json = await _api.patch('/products/$id', {
       if (categoryId != null) 'categoryId': categoryId,
       if (unitId != null) 'unitId': unitId,
+      if (providerId != null) 'providerId': providerId,
       if (nameLao != null) 'nameLao': nameLao,
       if (nameEn != null) 'nameEn': nameEn,
       if (description != null) 'description': description,
       if (basePrice != null) 'basePrice': basePrice,
       if (stockQty != null) 'stockQty': stockQty,
       if (weight != null) 'weight': weight,
+      if (sizeCm != null) 'sizeCm': sizeCm,
       if (isActive != null) 'isActive': isActive ? 1 : 0,
     }, auth: true);
     return Product.fromJson(json);

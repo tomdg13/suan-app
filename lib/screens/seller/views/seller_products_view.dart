@@ -11,6 +11,8 @@ import '../../../services/product_service.dart';
 import '../../../services/catalog_service.dart';
 import '../../../services/upload_service.dart';
 import '../../../services/api_client.dart';
+import '../../../services/logistics_provider_service.dart';
+import '../../../services/shipping_tier_service.dart';
 import '../../../utils/image_compress.dart';
 // Below this width the header stacks (title above the button instead of
 // side-by-side) and product cards switch to a compact layout thatdoesn't
@@ -433,6 +435,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   final _productService = ProductService();
   final _uploadService = UploadService();
   final _imagePicker = ImagePicker();
+  final _logisticsService = LogisticsProviderService();
+  final _tierService = ShippingTierService();
   late final _nameCtrl = TextEditingController(text: widget.existingProduct?.nameLao ?? '');
   late final _descCtrl = TextEditingController(text: widget.existingProduct?.description ?? '');
   late final _priceCtrl = TextEditingController(
@@ -441,27 +445,45 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       text: widget.existingProduct != null && widget.existingProduct!.weight > 0
           ? widget.existingProduct!.weight.toString()
           : '');
+  late final _sizeCtrl = TextEditingController(
+      text: widget.existingProduct != null && widget.existingProduct!.sizeCm > 0
+          ? widget.existingProduct!.sizeCm.toString()
+          : '');
   List<ProductCategory> _categories = [];
   List<ProductUnit> _units = [];
+  List<LogisticsProvider> _providers = [];
   int? _selectedCategoryId;
   int? _selectedUnitId;
+  int? _selectedProviderId;
   bool _loadingOptions = true;
   bool _submitting = false;
   bool _pickingImages = false;
   String? _error;
   final List<Uint8List> _pickedImages = [];
+  // Shipping-fee preview state — recalculated whenever the selected
+  // provider, weight, or size changes (only when the provider allows
+  // seller-managed weight tiers; otherwise there's nothing to preview).
+  List<ShippingTier> _providerTiers = [];
+  bool _loadingTiers = false;
   bool get _isEditMode => widget.existingProduct != null;
+  LogisticsProvider? get _selectedProvider => _selectedProviderId == null
+      ? null
+      : _providers.where((p) => p.id == _selectedProviderId).firstOrNull;
   @override
   void initState() {
     super.initState();
+    _weightCtrl.addListener(() => setState(() {}));
+    _sizeCtrl.addListener(() => setState(() {}));
     _loadOptions();
   }
   Future<void> _loadOptions() async {
     final categories = await _catalogService.getCategories();
     final units = await _catalogService.getUnits();
+    final providers = await _logisticsService.fetchActive();
     setState(() {
       _categories = categories;
       _units = units;
+      _providers = providers;
       // Pre-select the existing product's category/unit when editing,
       // otherwise default to the first available option.
       _selectedCategoryId = widget.existingProduct != null
@@ -470,8 +492,35 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       _selectedUnitId = widget.existingProduct != null
           ? widget.existingProduct!.unitId
           : (units.isNotEmpty ? units.first.id : null);
+      _selectedProviderId = widget.existingProduct?.providerId;
       _loadingOptions = false;
     });
+    if (_selectedProviderId != null && (_selectedProvider?.allowWeightTiers ?? false)) {
+      _loadTiersForSelectedProvider();
+    }
+  }
+  Future<void> _loadTiersForSelectedProvider() async {
+    if (_selectedProviderId == null) {
+      setState(() => _providerTiers = []);
+      return;
+    }
+    setState(() => _loadingTiers = true);
+    try {
+      final tiers = await _tierService.fetchByProvider(_selectedProviderId!);
+      setState(() => _providerTiers = tiers);
+    } finally {
+      setState(() => _loadingTiers = false);
+    }
+  }
+  void _onProviderChanged(int? providerId) {
+    setState(() {
+      _selectedProviderId = providerId;
+      _providerTiers = [];
+    });
+    final provider = _selectedProvider;
+    if (provider != null && provider.allowWeightTiers) {
+      _loadTiersForSelectedProvider();
+    }
   }
   Future<void> _pickImages() async {
     setState(() => _pickingImages = true);
@@ -503,10 +552,12 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           widget.existingProduct!.id,
           categoryId: _selectedCategoryId,
           unitId: _selectedUnitId,
+          providerId: _selectedProviderId,
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
           weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
+          sizeCm: double.tryParse(_sizeCtrl.text.trim()) ?? 0,
         );
       } else {
         // New products start at 0 stock — add stock via the Stock
@@ -515,10 +566,12 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           storeId: widget.storeId,
           categoryId: _selectedCategoryId!,
           unitId: _selectedUnitId!,
+          providerId: _selectedProviderId,
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
           basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
           weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
+          sizeCm: double.tryParse(_sizeCtrl.text.trim()) ?? 0,
         );
       }
       if (_pickedImages.isNotEmpty) {
@@ -535,6 +588,122 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     } finally {
       setState(() => _submitting = false);
     }
+  }
+  // ---- Shipping section: provider dropdown + conditional content
+  // below it depending on the selected provider's type. ----
+  Widget _buildShippingSection() {
+    final provider = _selectedProvider;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('ວິທີການຈັດສົ່ງ', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          initialValue: _selectedProviderId,
+          decoration: const InputDecoration(
+            labelText: 'ຜູ້ໃຫ້ບໍລິການຂົນສົ່ງ',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            const DropdownMenuItem<int>(value: null, child: Text('— ບໍ່ລະບຸ —')),
+            for (final p in _providers)
+              DropdownMenuItem(value: p.id, child: Text(p.name)),
+          ],
+          onChanged: _onProviderChanged,
+        ),
+        const SizedBox(height: 8),
+        if (provider == null)
+          Text(
+            'ຖ້າບໍ່ເລືອກ, ຄ່າສົ່ງຈະຄິດຕາມການຕັ້ງຄ່າເລີ່ມຕົ້ນຂອງລະບົບ.',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          )
+        else if (provider.allowWeightTiers)
+          _buildWeightTierSection()
+        else
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              provider.type == 'store_pickup'
+                  ? 'ຮັບເອງທີ່ຮ້ານ — ບໍ່ມີຄ່າສົ່ງ.'
+                  : 'ຄ່າສົ່ງຈະຄິດໄລ່ໂດຍບໍລິສັດຂົນສົ່ງນີ້ໂດຍກົງ (ບໍ່ຕ້ອງຕັ້ງນ້ຳໜັກ/ຂະໜາດ).',
+              style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
+            ),
+          ),
+      ],
+    );
+  }
+  // Weight/size inputs + live fee preview — only shown for providers
+  // where the admin has enabled allow_weight_tiers.
+  Widget _buildWeightTierSection() {
+    final weight = double.tryParse(_weightCtrl.text.trim()) ?? 0;
+    final size = double.tryParse(_sizeCtrl.text.trim()) ?? 0;
+    final hasTiers = _providerTiers.isNotEmpty;
+    final previewFee = hasTiers
+        ? ShippingTierService.priceForValues(_providerTiers, weightKg: weight, sizeCm: size)
+        : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _weightCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'ນ້ຳໜັກ (ກິໂລ)',
+                  hintText: '0.5, 1, 2.5',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _sizeCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'ຂະໜາດ (ຊມ)',
+                  hintText: 'ຖ້າມີ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_loadingTiers)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: SizedBox(
+              height: 14,
+              width: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          )
+        else if (!hasTiers)
+          Text(
+            'ຜູ້ໃຫ້ບໍລິການນີ້ຍັງບໍ່ໄດ້ຕັ້ງລະດັບຄ່າສົ່ງ — ໄປທີ່ "ຄ່າສົ່ງ" ເພື່ອຕັ້ງກ່ອນ.',
+            style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'ຄ່າສົ່ງໂດຍປະມານ: ${NumberFormat.decimalPattern('en_US').format(previewFee ?? 0)} ກີບ',
+              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+            ),
+          ),
+      ],
+    );
   }
   @override
   Widget build(BuildContext context) {
@@ -610,16 +779,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _weightCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'ນ້ຳໜັກ (ກິໂລ) - ໃຊ້ຄິດຄ່າຂົນສົງ',
-                      hintText: 'ຕົວຢ່າງ 0.5, 1, 2.5',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
+                  const SizedBox(height: 16),
+                  _buildShippingSection(),
                   const SizedBox(height: 16),
                   Align(
                     alignment: Alignment.centerLeft,

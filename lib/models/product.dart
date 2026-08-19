@@ -3,14 +3,12 @@ class ProductVariant {
   final String variantLabel;
   final double price;
   final double stockQty;
-
   ProductVariant({
     required this.id,
     required this.variantLabel,
     required this.price,
     required this.stockQty,
   });
-
   factory ProductVariant.fromJson(Map<String, dynamic> json) {
     return ProductVariant(
       id: json['id'],
@@ -20,13 +18,10 @@ class ProductVariant {
     );
   }
 }
-
 class ProductImageInfo {
   final int id;
   final String imageUrl;
-
   ProductImageInfo({required this.id, required this.imageUrl});
-
   factory ProductImageInfo.fromJson(Map<String, dynamic> json) {
     return ProductImageInfo(
       id: json['id'],
@@ -34,12 +29,12 @@ class ProductImageInfo {
     );
   }
 }
-
 class Product {
   final int id;
   final int storeId;
   final int categoryId;
   final int unitId;
+  final int? providerId;
   final String nameLao;
   final String? nameEn;
   final String? description;
@@ -49,17 +44,18 @@ class Product {
   final double ratingAvg;
   final int ratingCount;
   final double weight;
+  final double sizeCm;
   final List<ProductVariant> variants;
   final List<ProductImageInfo> images;
   final String? storeName;
   final bool isActive;
   final bool isFlashSale;
-
   Product({
     required this.id,
     required this.storeId,
     required this.categoryId,
     required this.unitId,
+    this.providerId,
     required this.nameLao,
     this.nameEn,
     this.description,
@@ -69,23 +65,23 @@ class Product {
     this.ratingAvg = 0,
     this.ratingCount = 0,
     this.weight = 0,
+    this.sizeCm = 0,
     this.variants = const [],
     this.images = const [],
     this.storeName,
     this.isActive = true,
     this.isFlashSale = false,
   });
-
   /// Convenience list of just the URLs, for screens that don't need
   /// each image's ID (product cards, product detail gallery, etc.)
   List<String> get imageUrls => images.map((e) => e.imageUrl).toList();
-
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'],
       storeId: json['storeId'] ?? (json['store']?['id'] ?? 0),
       categoryId: json['categoryId'] ?? (json['category']?['id'] ?? 0),
       unitId: json['unitId'] ?? (json['unit']?['id'] ?? 0),
+      providerId: json['providerId'] as int? ?? (json['provider']?['id'] as int?),
       nameLao: json['nameLao'] ?? '',
       nameEn: json['nameEn'],
       description: json['description'],
@@ -95,6 +91,7 @@ class Product {
       ratingAvg: double.tryParse('${json['ratingAvg']}') ?? 0,
       ratingCount: json['ratingCount'] ?? 0,
       weight: double.tryParse('${json['weight']}') ?? 0,
+      sizeCm: double.tryParse('${json['sizeCm']}') ?? 0,
       variants: (json['variants'] as List<dynamic>? ?? [])
           .map((v) => ProductVariant.fromJson(v))
           .toList(),
