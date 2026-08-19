@@ -522,6 +522,140 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       _loadTiersForSelectedProvider();
     }
   }
+  // Opens a small form to add ONE tier (metric + threshold + price) for
+  // the currently selected provider. Reopens are just another tap of
+  // the same button, so the seller can add several tiers in a row
+  // without leaving the product form.
+  Future<void> _openAddTierDialog() async {
+    if (_selectedProviderId == null) return;
+    final metricCtrl = ValueNotifier<String>('weight');
+    final minCtrl = TextEditingController();
+    final maxCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    String? dialogError;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: const Text('ເພີ່ມຂັ້ນຄ່າສົ່ງ'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('ຄິດໄລ່ຈາກ', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  ValueListenableBuilder<String>(
+                    valueListenable: metricCtrl,
+                    builder: (_, metric, __) => SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'weight', label: Text('ນ້ຳໜັກ (ກິໂລ)')),
+                        ButtonSegment(value: 'size', label: Text('ຂະໜາດ (ຊມ)')),
+                      ],
+                      selected: {metric},
+                      onSelectionChanged: (s) => metricCtrl.value = s.first,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: minCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'ຈາກ',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: maxCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: 'ຫາ (ວ່າງ = ຂຶ້ນໄປ)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'ຄ່າສົ່ງ (ກີບ)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 10),
+                    Text(dialogError!, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('ປິດ'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final min = double.tryParse(minCtrl.text.trim());
+                  final max = maxCtrl.text.trim().isEmpty ? null : double.tryParse(maxCtrl.text.trim());
+                  final price = int.tryParse(priceCtrl.text.trim());
+                  if (min == null || min < 0) {
+                    setDialogState(() => dialogError = 'ກະລຸນາໃສ່ຄ່າ "ຈາກ" ໃຫ້ຖືກຕ້ອງ');
+                    return;
+                  }
+                  if (price == null || price < 0) {
+                    setDialogState(() => dialogError = 'ກະລຸນາໃສ່ຄ່າສົ່ງໃຫ້ຖືກຕ້ອງ');
+                    return;
+                  }
+                  try {
+                    await _tierService.create(
+                      providerId: _selectedProviderId!,
+                      metric: metricCtrl.value,
+                      minWeight: min,
+                      maxWeight: max,
+                      price: price,
+                      sortOrder: _providerTiers.length,
+                    );
+                    if (!dialogContext.mounted) return;
+                    Navigator.of(dialogContext).pop();
+                    // Clear inputs so the same dialog starts fresh if
+                    // the seller taps "ເພີ່ມຂັ້ນ" again right away.
+                    minCtrl.clear();
+                    maxCtrl.clear();
+                    priceCtrl.clear();
+                    await _loadTiersForSelectedProvider();
+                  } on ApiException catch (e) {
+                    setDialogState(() => dialogError = e.message);
+                  }
+                },
+                child: const Text('ບັນທຶກຂັ້ນ'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+  Future<void> _deleteTier(ShippingTier tier) async {
+    try {
+      await _tierService.delete(tier.id);
+      await _loadTiersForSelectedProvider();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
   Future<void> _pickImages() async {
     setState(() => _pickingImages = true);
     try {
@@ -589,6 +723,12 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       setState(() => _submitting = false);
     }
   }
+  String _tierRangeLabel(ShippingTier tier) {
+    final unit = tier.metric == 'size' ? 'ຊມ' : 'ກິໂລ';
+    String fmt(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+    if (tier.maxWeight == null) return '${fmt(tier.minWeight)}+ $unit';
+    return '${fmt(tier.minWeight)} - ${fmt(tier.maxWeight!)} $unit';
+  }
   // ---- Shipping section: provider dropdown + conditional content
   // below it depending on the selected provider's type. ----
   Widget _buildShippingSection() {
@@ -636,8 +776,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       ],
     );
   }
-  // Weight/size inputs + live fee preview — only shown for providers
-  // where the admin has enabled allow_weight_tiers.
+  // Weight/size inputs + live fee preview + tier management — only
+  // shown for providers where the admin has enabled allow_weight_tiers.
   Widget _buildWeightTierSection() {
     final weight = double.tryParse(_weightCtrl.text.trim()) ?? 0;
     final size = double.tryParse(_sizeCtrl.text.trim()) ?? 0;
@@ -687,10 +827,10 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           )
         else if (!hasTiers)
           Text(
-            'ຜູ້ໃຫ້ບໍລິການນີ້ຍັງບໍ່ໄດ້ຕັ້ງລະດັບຄ່າສົ່ງ — ໄປທີ່ "ຄ່າສົ່ງ" ເພື່ອຕັ້ງກ່ອນ.',
+            'ຜູ້ໃຫ້ບໍລິການນີ້ຍັງບໍ່ໄດ້ຕັ້ງລະດັບຄ່າສົ່ງ — ກົດ "ເພີ່ມຂັ້ນ" ດ້ານລຸ່ມເພື່ອຕັ້ງ.',
             style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
           )
-        else
+        else ...[
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -702,6 +842,44 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
               style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
             ),
           ),
+          const SizedBox(height: 8),
+          ...(_providerTiers..sort((a, b) => a.minWeight.compareTo(b.minWeight))).map(
+            (tier) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    tier.metric == 'size' ? Icons.straighten : Icons.scale,
+                    size: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${_tierRangeLabel(tier)} — ${NumberFormat.decimalPattern('en_US').format(tier.price)} ກີບ',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _deleteTier(tier),
+                    child: Icon(Icons.close, size: 14, color: Colors.red.shade400),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _openAddTierDialog,
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('ເພີ່ມຂັ້ນ', style: TextStyle(fontSize: 13)),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
       ],
     );
   }
