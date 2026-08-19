@@ -14,6 +14,7 @@ import '../../../services/api_client.dart';
 import '../../../services/logistics_provider_service.dart';
 import '../../../services/shipping_tier_service.dart';
 import '../../../utils/image_compress.dart';
+import '../../../utils/thousands_formatter.dart';
 // Below this width the header stacks (title above the button instead of
 // side-by-side) and product cards switch to a compact layout thatdoesn't
 // squeeze the "Stock: N · N photo(s)" line into a single narrow column.
@@ -440,7 +441,9 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   late final _nameCtrl = TextEditingController(text: widget.existingProduct?.nameLao ?? '');
   late final _descCtrl = TextEditingController(text: widget.existingProduct?.description ?? '');
   late final _priceCtrl = TextEditingController(
-      text: widget.existingProduct != null ? widget.existingProduct!.basePrice.toStringAsFixed(0) : '');
+      text: widget.existingProduct != null
+          ? NumberFormat.decimalPattern('en_US').format(widget.existingProduct!.basePrice)
+          : '');
   late final _weightCtrl = TextEditingController(
       text: widget.existingProduct != null && widget.existingProduct!.weight > 0
           ? widget.existingProduct!.weight.toString()
@@ -588,6 +591,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                   TextField(
                     controller: priceCtrl,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [ThousandsInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: 'ຄ່າສົ່ງ (ກີບ)',
                       border: OutlineInputBorder(),
@@ -609,7 +613,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                 onPressed: () async {
                   final min = double.tryParse(minCtrl.text.trim());
                   final max = maxCtrl.text.trim().isEmpty ? null : double.tryParse(maxCtrl.text.trim());
-                  final price = int.tryParse(priceCtrl.text.trim());
+                  final price = int.tryParse(ThousandsInputFormatter.unformat(priceCtrl.text.trim()));
                   if (min == null || min < 0) {
                     setDialogState(() => dialogError = 'ກະລຸນາໃສ່ຄ່າ "ຈາກ" ໃຫ້ຖືກຕ້ອງ');
                     return;
@@ -689,7 +693,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           providerId: _selectedProviderId,
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim(),
-          basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+          basePrice: double.tryParse(ThousandsInputFormatter.unformat(_priceCtrl.text.trim())) ?? 0,
           weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
           sizeCm: double.tryParse(_sizeCtrl.text.trim()) ?? 0,
         );
@@ -703,7 +707,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           providerId: _selectedProviderId,
           nameLao: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-          basePrice: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+          basePrice: double.tryParse(ThousandsInputFormatter.unformat(_priceCtrl.text.trim())) ?? 0,
           weight: double.tryParse(_weightCtrl.text.trim()) ?? 0,
           sizeCm: double.tryParse(_sizeCtrl.text.trim()) ?? 0,
         );
@@ -928,6 +932,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         child: TextField(
                           controller: _priceCtrl,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [ThousandsInputFormatter()],
                           decoration: const InputDecoration(
                               labelText: 'ລາຄາ (ກີບ)', border: OutlineInputBorder()),
                         ),
