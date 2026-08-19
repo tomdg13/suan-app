@@ -142,6 +142,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 imageUrl: _product!.imageUrls.isNotEmpty ? _product!.imageUrls.first : null,
                 price: price,
                 qty: _qty,
+                weight: _product!.weight,
               ),
             ],
             feeLines: feeLines,

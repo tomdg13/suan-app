@@ -128,6 +128,21 @@ class _AdminLogisticsProvidersViewState extends State<AdminLogisticsProvidersVie
                     '${_typeLabel(p.type)} · ລຳດັບ: ${p.sortOrder}',
                     style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
                   ),
+                  if (p.allowWeightTiers)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'ຕັ້ງຄ່າສົ່ງຕາມນ້ຳໜັກໄດ້',
+                          style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -266,6 +281,7 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
   late final _sortCtrl = TextEditingController(text: (widget.existing?.sortOrder ?? 0).toString());
   late String _type = widget.existing?.type ?? 'logistic';
   late bool _isActive = widget.existing?.isActive ?? true;
+  late bool _allowWeightTiers = widget.existing?.allowWeightTiers ?? false;
 
   Uint8List? _pickedImage;
   bool _submitting = false;
@@ -318,6 +334,7 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
           type: _type,
           isActive: _isActive,
           sortOrder: sortOrder,
+          allowWeightTiers: _allowWeightTiers,
           imageBytes: _pickedImage,
         );
       } else {
@@ -327,6 +344,7 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
           type: _type,
           isActive: _isActive,
           sortOrder: sortOrder,
+          allowWeightTiers: _allowWeightTiers,
           imageBytes: _pickedImage,
         );
       }
@@ -438,6 +456,17 @@ class _ProviderFormSheetState extends State<_ProviderFormSheet> {
               value: _isActive,
               activeColor: const Color(AppColors.primaryValue),
               onChanged: (v) => setState(() => _isActive = v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('ອະນຸຍາດຕັ້ງຄ່າສົ່ງຕາມນ້ຳໜັກ/ຂະໜາດ'),
+              subtitle: const Text(
+                'ຜູ້ຂາຍຈະສາມາດຕັ້ງລະດັບຄ່າສົ່ງເອງໄດ້ສຳລັບຜູ້ໃຫ້ບໍລິການນີ້',
+                style: TextStyle(fontSize: 11),
+              ),
+              value: _allowWeightTiers,
+              activeColor: const Color(AppColors.primaryValue),
+              onChanged: (v) => setState(() => _allowWeightTiers = v),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),

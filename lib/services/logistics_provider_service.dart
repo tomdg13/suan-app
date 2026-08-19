@@ -12,6 +12,7 @@ class LogisticsProvider {
   final String? logoUrl;
   final bool isActive;
   final int sortOrder;
+  final bool allowWeightTiers;
 
   LogisticsProvider({
     required this.id,
@@ -21,6 +22,7 @@ class LogisticsProvider {
     this.logoUrl,
     this.isActive = true,
     this.sortOrder = 0,
+    this.allowWeightTiers = false,
   });
 
   factory LogisticsProvider.fromJson(Map<String, dynamic> j) => LogisticsProvider(
@@ -31,6 +33,7 @@ class LogisticsProvider {
         logoUrl: j['logo_url'] as String?,
         isActive: j['is_active'] == 1 || j['is_active'] == true,
         sortOrder: (j['sort_order'] as num?)?.toInt() ?? 0,
+        allowWeightTiers: j['allow_weight_tiers'] == 1 || j['allow_weight_tiers'] == true,
       );
 }
 
@@ -63,6 +66,7 @@ class LogisticsProviderService {
     required String type,
     bool isActive = true,
     int sortOrder = 0,
+    bool allowWeightTiers = false,
     Uint8List? imageBytes,
   }) async {
     final response = await _multipartRequest(
@@ -75,6 +79,7 @@ class LogisticsProviderService {
         'type': type,
         'isActive': isActive ? '1' : '0',
         'sortOrder': sortOrder.toString(),
+        'allow_weight_tiers': allowWeightTiers ? '1' : '0',
       },
     );
     return LogisticsProvider.fromJson(response);
@@ -87,6 +92,7 @@ class LogisticsProviderService {
     required String type,
     bool isActive = true,
     int sortOrder = 0,
+    bool allowWeightTiers = false,
     Uint8List? imageBytes,
   }) async {
     final response = await _multipartRequest(
@@ -99,6 +105,7 @@ class LogisticsProviderService {
         'type': type,
         'isActive': isActive ? '1' : '0',
         'sortOrder': sortOrder.toString(),
+        'allow_weight_tiers': allowWeightTiers ? '1' : '0',
       },
     );
     return LogisticsProvider.fromJson(response);

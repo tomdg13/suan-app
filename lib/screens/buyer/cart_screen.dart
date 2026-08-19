@@ -198,7 +198,7 @@ class _CartScreenState extends State<CartScreen> {
         .where((i) => _selectedIds.contains(i.id))
         .map((i) {
           final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
-          return (name: '${i.productName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty);
+          return (name: '${i.productName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty, weight: i.weight);
         })
         .toList();
 

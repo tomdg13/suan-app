@@ -54,6 +54,7 @@ class OrdersService {
     int? promotionId,
     DeliveryMethod deliveryMethod = DeliveryMethod.delivery,
     String? courierName,
+    int? providerId,
   }) async {
     final json = await _api.post(
       '/orders/checkout',
@@ -64,6 +65,7 @@ class OrdersService {
         'deliveryMethod': deliveryMethod.apiValue,
         if (deliveryMethod == DeliveryMethod.delivery && courierName != null && courierName.isNotEmpty)
           'courierName': courierName,
+        if (providerId != null) 'providerId': providerId,
       },
       auth: true,
     );

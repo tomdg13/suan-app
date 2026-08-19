@@ -9,6 +9,8 @@ import '../../services/address_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/payment_qr_service.dart';
 import '../../services/logistics_provider_service.dart';
+import '../../services/shipping_tier_service.dart';
+import '../../services/fee_config_service.dart';
 import 'location_picker_screen.dart';
 import 'payment_proof_screen.dart';
 
@@ -31,7 +33,7 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
-  final List<({String name, String? imageUrl, double price, double qty})> items;
+  final List<({String name, String? imageUrl, double price, double qty, double weight})> items;
   final List<({String name, double amount})> feeLines;
   final int? existingOrderId;
 
@@ -66,6 +68,12 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   List<LogisticsProvider> _deliveryOptions = [];
   int? _selectedDeliveryOptionId;
 
+  final _shippingTierService = ShippingTierService();
+  final _feeConfigService = FeeConfigService();
+  List<ShippingTier> _shippingTiers = [];
+  List<FeeConfig> _activeFeeConfigs = [];
+  double _deliveryFee = 0;
+
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _lineCtrl = TextEditingController();
@@ -76,6 +84,55 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   bool _locating = false;
   double? _pickedLatitude;
   double? _pickedLongitude;
+
+  double get _itemsTotal => widget.items.fold(0.0, (sum, i) => sum + i.price * i.qty);
+  double get _totalWeightKg => widget.items.fold(0.0, (sum, i) => sum + i.weight * i.qty);
+  double get _displayTotal => widget.existingOrderId != null ? widget.amount : _itemsTotal + _deliveryFee;
+
+  // Recomputes the delivery fee locally to match the backend's branching
+  // exactly (orders.service.ts): store_pickup -> free, customer_courier ->
+  // flat fee_configs total, logistic -> weight-tier price. Runs whenever
+  // the selected radio option changes so the on-screen total updates live.
+  double _feeForOption(LogisticsProvider option) {
+    switch (option.type) {
+      case 'store_pickup':
+        return 0;
+      case 'customer_courier':
+        final lines = _feeConfigService.computeFeeLines(_activeFeeConfigs, _itemsTotal);
+        return _feeConfigService.sumFeeLines(lines);
+      case 'logistic':
+        return ShippingTierService.priceForWeight(_shippingTiers, _totalWeightKg).toDouble();
+      default:
+        return 0;
+    }
+  }
+
+  void _recalculateDeliveryFee() {
+    if (_deliveryOptions.isEmpty || _selectedDeliveryOptionId == null) {
+      setState(() => _deliveryFee = 0);
+      return;
+    }
+    final selected = _deliveryOptions.firstWhere(
+      (p) => p.id == _selectedDeliveryOptionId,
+      orElse: () => _deliveryOptions.first,
+    );
+    double fee;
+    switch (selected.type) {
+      case 'store_pickup':
+        fee = 0;
+        break;
+      case 'customer_courier':
+        final lines = _feeConfigService.computeFeeLines(_activeFeeConfigs, _itemsTotal);
+        fee = _feeConfigService.sumFeeLines(lines);
+        break;
+      case 'logistic':
+        fee = ShippingTierService.priceForWeight(_shippingTiers, _totalWeightKg).toDouble();
+        break;
+      default:
+        fee = 0;
+    }
+    setState(() => _deliveryFee = fee);
+  }
 
   @override
   void initState() {
@@ -114,10 +171,14 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _addressService.findMine(),
         _qrService.fetchCurrentQr(),
         _logisticsService.fetchActive(),
+        _shippingTierService.fetchActive(),
+        _feeConfigService.fetchActive(),
       ]);
       final addresses = results[0] as List<UserAddress>;
       final qrUrl = results[1] as String?;
       final providers = results[2] as List<LogisticsProvider>;
+      final tiers = results[3] as List<ShippingTier>;
+      final feeConfigs = results[4] as List<FeeConfig>;
 
       if (!mounted) return;
       setState(() {
@@ -129,8 +190,11 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _qrImageUrl = qrUrl;
         _deliveryOptions = providers;
         _selectedDeliveryOptionId = providers.isNotEmpty ? providers.first.id : null;
+        _shippingTiers = tiers;
+        _activeFeeConfigs = feeConfigs;
         _loading = false;
       });
+      _recalculateDeliveryFee();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -282,6 +346,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         paymentMethod: PaymentMethod.qrPay,
         deliveryMethod: isPickup ? DeliveryMethod.pickup : DeliveryMethod.delivery,
         courierName: isPickup ? null : selectedProvider.name,
+        providerId: selectedProvider.id,
       );
       if (!mounted) return;
       setState(() => _confirming = false);
@@ -460,7 +525,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
           const SizedBox(height: 10),
           lineRow(
             left: const Text('ລວມທັງໝົດ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            rightText: '${priceFormat.format(widget.amount)} ກີບ',
+            rightText: '${priceFormat.format(_displayTotal)} ກີບ',
             rightStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(AppColors.primaryValue)),
           ),
         ],
@@ -611,7 +676,10 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
               child: Text('ບໍ່ມີວິທີການຈັດສົ່ງໃຫ້ເລືອກ', style: TextStyle(fontSize: 12, color: Colors.grey)),
             ),
           ..._deliveryOptions.map((option) => InkWell(
-                onTap: () => setState(() => _selectedDeliveryOptionId = option.id),
+                onTap: () {
+                  setState(() => _selectedDeliveryOptionId = option.id);
+                  _recalculateDeliveryFee();
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -619,7 +687,10 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                       Radio<int>(
                         value: option.id,
                         groupValue: _selectedDeliveryOptionId,
-                        onChanged: (v) => setState(() => _selectedDeliveryOptionId = v),
+                        onChanged: (v) {
+                          setState(() => _selectedDeliveryOptionId = v);
+                          _recalculateDeliveryFee();
+                        },
                         activeColor: const Color(AppColors.primaryValue),
                       ),
                       (option.logoUrl != null && option.logoUrl!.isNotEmpty)
@@ -647,6 +718,10 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                               Text(option.description!, style: const TextStyle(fontSize: 12)),
                           ],
                         ),
+                      ),
+                      Text(
+                        '${NumberFormat.decimalPattern('en_US').format(_feeForOption(option))} ກີບ',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(AppColors.primaryValue)),
                       ),
                     ],
                   ),

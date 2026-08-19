@@ -7,6 +7,7 @@ class CartItem {
   final double unitPrice;
   final String? variantLabel;
   final String? imageUrl;
+  final double weight;
 
   CartItem({
     required this.id,
@@ -17,6 +18,7 @@ class CartItem {
     required this.unitPrice,
     this.variantLabel,
     this.imageUrl,
+    this.weight = 0,
   });
 
   double get subtotal => qty * unitPrice;
@@ -38,6 +40,7 @@ class CartItem {
           : double.tryParse('${product['basePrice']}') ?? 0,
       variantLabel: variant != null ? variant['variantLabel'] : null,
       imageUrl: firstImage?['imageUrl'],
+      weight: double.tryParse('${product['weight']}') ?? 0,
     );
   }
 }
