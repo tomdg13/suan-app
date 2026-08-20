@@ -515,13 +515,26 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       setState(() => _loadingTiers = false);
     }
   }
-  void _onProviderChanged(int? providerId) {
+  Future<void> _onProviderChanged(int? providerId) async {
     setState(() {
       _selectedProviderId = providerId;
       _providerTiers = [];
     });
+    // In edit mode, persist the provider choice immediately - tiers
+    // need providerId already saved on the product row before they can
+    // be attached, and waiting for the full form submit would leave
+    // the "ເພີ່ມຂັ້ນ" button broken until the seller saves first.
+    if (_isEditMode && providerId != null) {
+      try {
+        await _productService.updateProduct(widget.existingProduct!.id, providerId: providerId);
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        return;
+      }
+    }
     final provider = _selectedProvider;
-    if (provider != null && provider.allowWeightTiers) {
+    if (_isEditMode && provider != null && provider.allowWeightTiers) {
       _loadTiersForProduct();
     }
   }
@@ -793,6 +806,17 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'ນ້ຳໜັກ ແລະ ຂະໜາດຕົວຈິງຂອງສິນຄ້ານີ້',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 6),
+          child: Text(
+            'ໃສ່ນ້ຳໜັກ/ຂະໜາດຕົວຈິງຂອງສິນຄ້າ (ບໍ່ແມ່ນລາຄາຄ່າສົ່ງ) — ຈະຖືກນຳໄປທຽບກັບຂັ້ນຄ່າສົ່ງດ້ານລຸ່ມ ເພື່ອຄິດຄ່າສົ່ງໃຫ້ອັດຕະໂນມັດ.',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ),
         Row(
           children: [
             Expanded(
