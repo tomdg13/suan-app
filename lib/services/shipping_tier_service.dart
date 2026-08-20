@@ -2,6 +2,7 @@ import 'api_client.dart';
 
 class ShippingTier {
   final int id;
+  final int? productId;
   final int? providerId;
   final String metric; // 'weight' | 'size'
   final double minWeight;
@@ -12,6 +13,7 @@ class ShippingTier {
 
   ShippingTier({
     required this.id,
+    this.productId,
     this.providerId,
     this.metric = 'weight',
     required this.minWeight,
@@ -23,6 +25,7 @@ class ShippingTier {
 
   factory ShippingTier.fromJson(Map<String, dynamic> json) => ShippingTier(
         id: json['id'] as int,
+        productId: json['productId'] as int?,
         providerId: json['providerId'] as int?,
         metric: json['metric'] as String? ?? 'weight',
         minWeight: double.tryParse('${json['minWeight']}') ?? 0,
@@ -50,36 +53,30 @@ class ShippingTierService {
     return (body as List).map((e) => ShippingTier.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// Seller/admin — all tiers belonging to one logistics provider.
-  Future<List<ShippingTier>> fetchByProvider(int providerId) async {
-    final body = await _api.get('/shipping-tiers/by-provider/$providerId', auth: true);
+  /// Public — a single product's own tiers (seller's product form,
+  /// buyer's product detail page).
+  Future<List<ShippingTier>> fetchByProduct(int productId) async {
+    final body = await _api.get('/shipping-tiers/by-product/$productId');
     return (body as List).map((e) => ShippingTier.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// Given a provider + cart weight (kg) + size (cm), returns the fee.
+  /// Given a product + its weight (kg) + size (cm), returns the fee.
   /// Matches GET /shipping-tiers/calculate.
   Future<int> calculate({
-    required int providerId,
+    required int productId,
     double weightKg = 0,
     double sizeCm = 0,
   }) async {
     final body = await _api.get(
-      '/shipping-tiers/calculate?providerId=$providerId&weight=$weightKg&size=$sizeCm',
+      '/shipping-tiers/calculate?productId=$productId&weight=$weightKg&size=$sizeCm',
     );
     final map = body as Map<String, dynamic>;
     return map['price'] is int ? map['price'] as int : int.tryParse('${map['price']}') ?? 0;
   }
 
   /// Finds the price for [weightKg]/[sizeCm] from an already-fetched tier
-  /// list for ONE provider — avoids an extra API round-trip. Mirrors the
-  /// backend's calculateFeeForProvider logic (max of weight/size match).
-  /// Legacy alias — weight-only lookup across ALL tiers regardless of
-  /// provider, kept for callers (e.g. checkout for 'logistic' type
-  /// providers) that predate the per-provider tier system.
-  static int priceForWeight(List<ShippingTier> tiers, double weightKg) {
-    return priceForValues(tiers, weightKg: weightKg);
-  }
-
+  /// list for ONE product — avoids an extra API round-trip. Mirrors the
+  /// backend's calculateFeeForProduct logic (max of weight/size match).
   static int priceForValues(List<ShippingTier> tiers, {double weightKg = 0, double sizeCm = 0}) {
     if (tiers.isEmpty) return 0;
     int? matchMetric(String metric, double value) {
@@ -102,7 +99,7 @@ class ShippingTierService {
   }
 
   Future<ShippingTier> create({
-    required int providerId,
+    required int productId,
     required String metric,
     required double minWeight,
     double? maxWeight,
@@ -110,7 +107,7 @@ class ShippingTierService {
     int sortOrder = 0,
   }) async {
     final body = await _api.post('/shipping-tiers', {
-      'providerId': providerId,
+      'productId': productId,
       'metric': metric,
       'minWeight': minWeight,
       if (maxWeight != null) 'maxWeight': maxWeight,
@@ -122,7 +119,7 @@ class ShippingTierService {
 
   Future<ShippingTier> update(
     int id, {
-    int? providerId,
+    int? productId,
     String? metric,
     double? minWeight,
     double? maxWeight,
@@ -130,7 +127,7 @@ class ShippingTierService {
     int? sortOrder,
   }) async {
     final patch = <String, dynamic>{
-      if (providerId != null) 'providerId': providerId,
+      if (productId != null) 'productId': productId,
       if (metric != null) 'metric': metric,
       if (minWeight != null) 'minWeight': minWeight,
       if (maxWeight != null) 'maxWeight': maxWeight,

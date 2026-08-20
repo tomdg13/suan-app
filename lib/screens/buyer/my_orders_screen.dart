@@ -212,7 +212,7 @@ class _OrderCard extends StatelessWidget {
             existingOrderId: order.id,
             items: order.items.map((i) {
               final variantSuffix = (i.variantLabel != null && i.variantLabel!.isNotEmpty) ? ' (${i.variantLabel})' : '';
-              return (name: '${i.itemName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty, weight: 0.0);
+              return (productId: i.productId, name: '${i.itemName}$variantSuffix', imageUrl: i.imageUrl, price: i.unitPrice, qty: i.qty, weight: i.weight, sizeCm: i.sizeCm);
             }).toList(),
             feeLines: order.deliveryFee > 0 ? [(name: 'ຄ່າທຳນຽມ', amount: order.deliveryFee)] : [],
           ),

@@ -33,7 +33,7 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
-  final List<({String name, String? imageUrl, double price, double qty, double weight})> items;
+  final List<({int? productId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> items;
   final List<({String name, double amount})> feeLines;
   final int? existingOrderId;
 
@@ -70,7 +70,6 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
 
   final _shippingTierService = ShippingTierService();
   final _feeConfigService = FeeConfigService();
-  List<ShippingTier> _shippingTiers = [];
   List<FeeConfig> _activeFeeConfigs = [];
   double _deliveryFee = 0;
 
@@ -86,14 +85,13 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   double? _pickedLongitude;
 
   double get _itemsTotal => widget.items.fold(0.0, (sum, i) => sum + i.price * i.qty);
-  double get _totalWeightKg => widget.items.fold(0.0, (sum, i) => sum + i.weight * i.qty);
   double get _displayTotal => widget.existingOrderId != null ? widget.amount : _itemsTotal + _deliveryFee;
 
   // Recomputes the delivery fee locally to match the backend's branching
   // exactly (orders.service.ts): store_pickup -> free, customer_courier ->
   // flat fee_configs total, logistic -> weight-tier price. Runs whenever
   // the selected radio option changes so the on-screen total updates live.
-  double _feeForOption(LogisticsProvider option) {
+  Future<double> _feeForOption(LogisticsProvider option) async {
     switch (option.type) {
       case 'store_pickup':
         return 0;
@@ -101,13 +99,25 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         final lines = _feeConfigService.computeFeeLines(_activeFeeConfigs, _itemsTotal);
         return _feeConfigService.sumFeeLines(lines);
       case 'logistic':
-        return ShippingTierService.priceForWeight(_shippingTiers, _totalWeightKg).toDouble();
+        // Tiers are per-product now - sum each line item's own fee
+        // rather than one lookup against a shared list.
+        double total = 0;
+        for (final item in widget.items) {
+          if (item.productId == null) continue;
+          final price = await _shippingTierService.calculate(
+            productId: item.productId!,
+            weightKg: item.weight * item.qty,
+            sizeCm: item.sizeCm,
+          );
+          total += price;
+        }
+        return total;
       default:
         return 0;
     }
   }
 
-  void _recalculateDeliveryFee() {
+  Future<void> _recalculateDeliveryFee() async {
     if (_deliveryOptions.isEmpty || _selectedDeliveryOptionId == null) {
       setState(() => _deliveryFee = 0);
       return;
@@ -116,21 +126,8 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       (p) => p.id == _selectedDeliveryOptionId,
       orElse: () => _deliveryOptions.first,
     );
-    double fee;
-    switch (selected.type) {
-      case 'store_pickup':
-        fee = 0;
-        break;
-      case 'customer_courier':
-        final lines = _feeConfigService.computeFeeLines(_activeFeeConfigs, _itemsTotal);
-        fee = _feeConfigService.sumFeeLines(lines);
-        break;
-      case 'logistic':
-        fee = ShippingTierService.priceForWeight(_shippingTiers, _totalWeightKg).toDouble();
-        break;
-      default:
-        fee = 0;
-    }
+    final fee = await _feeForOption(selected);
+    if (!mounted) return;
     setState(() => _deliveryFee = fee);
   }
 
@@ -190,7 +187,6 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _qrImageUrl = qrUrl;
         _deliveryOptions = providers;
         _selectedDeliveryOptionId = providers.isNotEmpty ? providers.first.id : null;
-        _shippingTiers = tiers;
         _activeFeeConfigs = feeConfigs;
         _loading = false;
       });

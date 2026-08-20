@@ -499,17 +499,17 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
       _loadingOptions = false;
     });
     if (_selectedProviderId != null && (_selectedProvider?.allowWeightTiers ?? false)) {
-      _loadTiersForSelectedProvider();
+      _loadTiersForProduct();
     }
   }
-  Future<void> _loadTiersForSelectedProvider() async {
-    if (_selectedProviderId == null) {
+  Future<void> _loadTiersForProduct() async {
+    if (widget.existingProduct?.id == null) {
       setState(() => _providerTiers = []);
       return;
     }
     setState(() => _loadingTiers = true);
     try {
-      final tiers = await _tierService.fetchByProvider(_selectedProviderId!);
+      final tiers = await _tierService.fetchByProduct(widget.existingProduct!.id);
       setState(() => _providerTiers = tiers);
     } finally {
       setState(() => _loadingTiers = false);
@@ -522,7 +522,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     });
     final provider = _selectedProvider;
     if (provider != null && provider.allowWeightTiers) {
-      _loadTiersForSelectedProvider();
+      _loadTiersForProduct();
     }
   }
   // Opens a small form to add ONE tier (metric + threshold + price) for
@@ -530,7 +530,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   // the same button, so the seller can add several tiers in a row
   // without leaving the product form.
   Future<void> _openAddTierDialog() async {
-    if (_selectedProviderId == null) return;
+    final productId = widget.existingProduct?.id;
+    if (productId == null || _selectedProviderId == null) return;
     final metricCtrl = ValueNotifier<String>('weight');
     final minCtrl = TextEditingController();
     final maxCtrl = TextEditingController();
@@ -624,7 +625,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                   }
                   try {
                     await _tierService.create(
-                      providerId: _selectedProviderId!,
+                      productId: productId,
                       metric: metricCtrl.value,
                       minWeight: min,
                       maxWeight: max,
@@ -638,7 +639,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                     minCtrl.clear();
                     maxCtrl.clear();
                     priceCtrl.clear();
-                    await _loadTiersForSelectedProvider();
+                    await _loadTiersForProduct();
                   } on ApiException catch (e) {
                     setDialogState(() => dialogError = e.message);
                   }
@@ -654,7 +655,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   Future<void> _deleteTier(ShippingTier tier) async {
     try {
       await _tierService.delete(tier.id);
-      await _loadTiersForSelectedProvider();
+      await _loadTiersForProduct();
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));

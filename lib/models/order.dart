@@ -1,20 +1,26 @@
 class OrderItemModel {
   final int id;
+  final int? productId;
   final String itemName;
   final String? variantLabel;
   final double qty;
   final double unitPrice;
   final double subtotal;
   final String? imageUrl;
+  final double weight;
+  final double sizeCm;
 
   OrderItemModel({
     required this.id,
+    this.productId,
     required this.itemName,
     this.variantLabel,
     required this.qty,
     required this.unitPrice,
     required this.subtotal,
     this.imageUrl,
+    this.weight = 0,
+    this.sizeCm = 0,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -25,12 +31,15 @@ class OrderItemModel {
 
     return OrderItemModel(
       id: json['id'],
+      productId: json['product']?['id'] as int? ?? json['productId'] as int?,
       itemName: json['itemName'] ?? '',
       variantLabel: json['variantLabel'],
       qty: double.tryParse('${json['qty']}') ?? 0,
       unitPrice: double.tryParse('${json['unitPrice']}') ?? 0,
       subtotal: double.tryParse('${json['subtotal']}') ?? 0,
       imageUrl: firstImage?['imageUrl'],
+      weight: double.tryParse('${json['product']?['weight']}') ?? 0,
+      sizeCm: double.tryParse('${json['product']?['sizeCm']}') ?? 0,
     );
   }
 }

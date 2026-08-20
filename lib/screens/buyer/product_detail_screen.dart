@@ -137,12 +137,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             amount: total,
             items: [
               (
+                productId: _product!.id,
                 name: '${_product!.nameLao}'
                     '${_selectedVariant != null ? ' (${_selectedVariant!.variantLabel})' : ''}',
                 imageUrl: _product!.imageUrls.isNotEmpty ? _product!.imageUrls.first : null,
                 price: price,
                 qty: _qty,
                 weight: _product!.weight,
+                sizeCm: _product!.sizeCm,
               ),
             ],
             feeLines: feeLines,
