@@ -33,7 +33,7 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
-  final List<({int? productId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> items;
+  final List<({int? productId, int? providerId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> items;
   final List<({String name, double amount})> feeLines;
   final int? existingOrderId;
 
@@ -72,6 +72,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   final _feeConfigService = FeeConfigService();
   List<FeeConfig> _activeFeeConfigs = [];
   double _deliveryFee = 0;
+  final Map<int, double> _optionFeeCache = {};
 
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -85,7 +86,10 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   double? _pickedLongitude;
 
   double get _itemsTotal => widget.items.fold(0.0, (sum, i) => sum + i.price * i.qty);
-  double get _displayTotal => widget.existingOrderId != null ? widget.amount : _itemsTotal + _deliveryFee;
+  double get _feeLinesTotal => widget.feeLines.fold(0.0, (sum, f) => sum + f.amount);
+  double get _displayTotal => widget.existingOrderId != null
+      ? widget.amount
+      : _itemsTotal + _feeLinesTotal + _deliveryFee;
 
   // Recomputes the delivery fee locally to match the backend's branching
   // exactly (orders.service.ts): store_pickup -> free, customer_courier ->
@@ -99,11 +103,14 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         final lines = _feeConfigService.computeFeeLines(_activeFeeConfigs, _itemsTotal);
         return _feeConfigService.sumFeeLines(lines);
       case 'logistic':
-        // Tiers are per-product now - sum each line item's own fee
-        // rather than one lookup against a shared list.
+        // Tiers are per-product AND tied to the specific provider the
+        // seller picked for that product - only sum an item's tier fee
+        // when this option IS that product's own chosen provider.
+        // Items belonging to a different provider don't apply here.
         double total = 0;
         for (final item in widget.items) {
           if (item.productId == null) continue;
+          if (item.providerId != option.id) continue;
           final price = await _shippingTierService.calculate(
             productId: item.productId!,
             weightKg: item.weight * item.qty,
@@ -117,6 +124,21 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
     }
   }
 
+  // Computes and caches the fee for every delivery option up front so
+  // the option list can read synchronously from _optionFeeCache during
+  // build (calling the async _feeForOption directly inside build() is
+  // what caused the earlier "Future<double> passed to NumberFormat"
+  // crash - build must stay synchronous).
+  Future<void> _recalculateAllOptionFees() async {
+    for (final option in _deliveryOptions) {
+      final fee = await _feeForOption(option);
+      if (!mounted) return;
+      _optionFeeCache[option.id] = fee;
+    }
+    if (!mounted) return;
+    setState(() {});
+  }
+
   Future<void> _recalculateDeliveryFee() async {
     if (_deliveryOptions.isEmpty || _selectedDeliveryOptionId == null) {
       setState(() => _deliveryFee = 0);
@@ -126,7 +148,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
       (p) => p.id == _selectedDeliveryOptionId,
       orElse: () => _deliveryOptions.first,
     );
-    final fee = await _feeForOption(selected);
+    final fee = _optionFeeCache[selected.id] ?? await _feeForOption(selected);
     if (!mounted) return;
     setState(() => _deliveryFee = fee);
   }
@@ -191,6 +213,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         _loading = false;
       });
       _recalculateDeliveryFee();
+      _recalculateAllOptionFees();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -716,7 +739,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                         ),
                       ),
                       Text(
-                        '${NumberFormat.decimalPattern('en_US').format(_feeForOption(option))} ກີບ',
+                        '${NumberFormat.decimalPattern('en_US').format(_optionFeeCache[option.id] ?? 0)} ກີບ',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(AppColors.primaryValue)),
                       ),
                     ],

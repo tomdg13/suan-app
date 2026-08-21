@@ -138,6 +138,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             items: [
               (
                 productId: _product!.id,
+                providerId: _product!.providerId,
                 name: '${_product!.nameLao}'
                     '${_selectedVariant != null ? ' (${_selectedVariant!.variantLabel})' : ''}',
                 imageUrl: _product!.imageUrls.isNotEmpty ? _product!.imageUrls.first : null,
