@@ -11,6 +11,7 @@ import '../../services/payment_qr_service.dart';
 import '../../services/logistics_provider_service.dart';
 import '../../services/shipping_tier_service.dart';
 import '../../services/fee_config_service.dart';
+import '../../services/cart_service.dart';
 import 'location_picker_screen.dart';
 import 'payment_proof_screen.dart';
 
@@ -33,7 +34,7 @@ import 'payment_proof_screen.dart';
 
 class BuyerPaymentScreen extends StatefulWidget {
   final double amount;
-  final List<({int? productId, int? providerId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> items;
+  final List<({int? cartItemId, int? productId, int? providerId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> items;
   final List<({String name, double amount})> feeLines;
   final int? existingOrderId;
 
@@ -50,6 +51,13 @@ class BuyerPaymentScreen extends StatefulWidget {
 }
 
 class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
+  final _cartService = CartService();
+  // Mutable copy of widget.items so the +/- qty adjuster can update
+  // quantities locally. Only items with a cartItemId (i.e. came from
+  // the cart, not "buy now" or an existing order) can be adjusted -
+  // adjusting also calls the cart API so checkout (which re-reads the
+  // live server-side cart) charges the same amount shown here.
+  late List<({int? cartItemId, int? productId, int? providerId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm})> _items = List.of(widget.items);
   final _addressService = AddressService();
   final _qrService = PaymentQrService();
   final _ordersService = OrdersService();
@@ -85,7 +93,43 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
   double? _pickedLatitude;
   double? _pickedLongitude;
 
-  double get _itemsTotal => widget.items.fold(0.0, (sum, i) => sum + i.price * i.qty);
+  double get _itemsTotal => _items.fold(0.0, (sum, i) => sum + i.price * i.qty);
+
+  // Updates a cart-origin item's quantity: persists to the server-side
+  // cart (so checkout - which re-reads the live cart - charges the
+  // same amount shown here), then updates local state and recomputes
+  // the delivery fee / totals to match.
+  Future<void> _adjustQty(
+    ({int? cartItemId, int? productId, int? providerId, String name, String? imageUrl, double price, double qty, double weight, double sizeCm}) item,
+    double newQty,
+  ) async {
+    if (item.cartItemId == null || newQty < 1) return;
+    try {
+      await _cartService.updateQty(item.cartItemId!, newQty);
+      if (!mounted) return;
+      setState(() {
+        final index = _items.indexWhere((i) => i.cartItemId == item.cartItemId);
+        if (index != -1) {
+          _items[index] = (
+            cartItemId: item.cartItemId,
+            productId: item.productId,
+            providerId: item.providerId,
+            name: item.name,
+            imageUrl: item.imageUrl,
+            price: item.price,
+            qty: newQty,
+            weight: item.weight,
+            sizeCm: item.sizeCm,
+          );
+        }
+      });
+      await _recalculateAllOptionFees();
+      await _recalculateDeliveryFee();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ບໍ່ສາມາດອັບເດດຈຳນວນໄດ້: \$e')));
+    }
+  }
   double get _feeLinesTotal => widget.feeLines.fold(0.0, (sum, f) => sum + f.amount);
   double get _displayTotal => widget.existingOrderId != null
       ? widget.amount
@@ -108,7 +152,7 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         // when this option IS that product's own chosen provider.
         // Items belonging to a different provider don't apply here.
         double total = 0;
-        for (final item in widget.items) {
+        for (final item in _items) {
           if (item.productId == null) continue;
           if (item.providerId != option.id) continue;
           final price = await _shippingTierService.calculate(
@@ -490,9 +534,9 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('ລາຍລະອຽດການຊຳລະ', style: TextStyle(color: Colors.black54, fontSize: 13)),
-          if (widget.items.isNotEmpty) ...[
+          if (_items.isNotEmpty) ...[
             const SizedBox(height: 10),
-            ...widget.items.map((item) {
+            ..._items.map((item) {
               final subtotal = item.price * item.qty;
               return lineRow(
                 left: Row(
@@ -517,10 +561,36 @@ class _BuyerPaymentScreenState extends State<BuyerPaymentScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '${item.name}  ${priceFormat.format(item.price)} x ${qtyLabel(item.qty)}',
+                        '${item.name}  ${priceFormat.format(item.price)}',
                         style: const TextStyle(fontSize: 13, color: Color(AppColors.textDarkValue)),
                       ),
                     ),
+                    if (item.cartItemId != null) ...[
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        onPressed: item.qty > 1 ? () => _adjustQty(item, item.qty - 1) : null,
+                      ),
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          qtyLabel(item.qty),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        onPressed: () => _adjustQty(item, item.qty + 1),
+                      ),
+                    ] else
+                      Text(
+                        'x ${qtyLabel(item.qty)}',
+                        style: const TextStyle(fontSize: 13, color: Color(AppColors.textDarkValue)),
+                      ),
                   ],
                 ),
                 rightText: '${priceFormat.format(subtotal)} ກີບ',

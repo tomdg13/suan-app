@@ -137,6 +137,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             amount: total,
             items: [
               (
+                cartItemId: null,
                 productId: _product!.id,
                 providerId: _product!.providerId,
                 name: '${_product!.nameLao}'
