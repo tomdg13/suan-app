@@ -4,12 +4,17 @@ import 'api_client.dart';
 class CartService {
   final ApiClient _api = ApiClient();
 
-  Future<void> addToCart({required int productId, int? variantId, required double qty}) async {
-    await _api.post('/cart', {
+  /// Adds to cart (or merges qty into an existing matching row) and
+  /// returns the resulting cart item's id, so callers like "buy now"
+  /// can link that specific item to later screens (e.g. for the qty
+  /// adjuster on the payment page).
+  Future<int?> addToCart({required int productId, int? variantId, required double qty}) async {
+    final json = await _api.post('/cart', {
       'productId': productId,
       if (variantId != null) 'variantId': variantId,
       'qty': qty,
     }, auth: true);
+    return (json as Map<String, dynamic>)['id'] as int?;
   }
 
   Future<List<CartGroup>> getCart() async {

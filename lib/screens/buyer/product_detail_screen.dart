@@ -108,7 +108,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (!mounted) return;
     setState(() => _buyingNow = true);
     try {
-      await _cartService.addToCart(
+      final cartItemId = await _cartService.addToCart(
         productId: widget.productId,
         variantId: _selectedVariant?.id,
         qty: _qty,
@@ -137,7 +137,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             amount: total,
             items: [
               (
-                cartItemId: null,
+                cartItemId: cartItemId,
                 productId: _product!.id,
                 providerId: _product!.providerId,
                 name: '${_product!.nameLao}'
